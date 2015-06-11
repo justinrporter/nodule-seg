@@ -37,6 +37,8 @@ def process_command_line(argv):
     parser.add_argument('--debug', action="store_true", default=False,
                         help="Debug mode. Pipeline stages are computed" +
                         "stepwise, additional output is produced.")
+    parser.add_argument('-o', '--output', default=None,
+                        help="The segmented file to output")
 
     args = parser.parse_args(argv[1:])
 
@@ -44,8 +46,9 @@ def process_command_line(argv):
     args.image = args.image[0]
 
     # Build a output filename from args.image
-    ext = args.image[args.image.rfind('.'):]
-    args.out_image = args.image.rstrip(ext) + "-label" + ext
+    if args.output is None:
+        ext = args.image[args.image.rfind('.'):]
+        args.output = args.image.rstrip(ext) + "-label" + ext
 
     # pylint: disable=global-variable-undefined
     global DEBUG
@@ -94,17 +97,18 @@ def attach_connect(pipe, iterations, stddevs, neighborhood, seed):
     return ccif
 
 
-def attach_reader(fname):
+def get_reader(fname):
     '''Initialize a filter pipeline by building an ImageFileReader based on
     the given file 'fname'.'''
     # pylint: disable=no-member
     image_type = itk.Image[itk.UC, 3]
 
     reader = itk.ImageFileReader[image_type].New()
+
     reader.SetFileName(fname)
 
     if DEBUG:
-        reader.DebugOn()
+        reader.SetDebug(True)
         reader.Update()
 
     return reader
@@ -118,7 +122,7 @@ def attach_writer(pipe, fname):
 
     writer = itk.ImageFileWriter[image_type].New()
 
-    writer.setInput(pipe.GetOutput())
+    writer.SetInput(pipe.GetOutput())
     writer.SetFileName(fname)
 
     if DEBUG:
@@ -132,23 +136,23 @@ def main(argv=None):
     being run as a script. Otherwise, it's silent and just exposes methods.'''
     args = process_command_line(argv)
 
-    pipe = attach_reader(args.image[0])
+    pipe = get_reader(args.image)
 
     pipe = attach_connect(pipe,
                           args.connect_iterations,
                           args.connect_stddevs,
                           args.connect_neighborhood,
                           args.seed)
-    # img = run_smooth(img,
-    #                  args.smooth_iterations,
-    #                  args.smooth_timestep)
+    pipe = attach_smooth(pipe,
+                         args.smooth_iterations,
+                         args.smooth_timestep)
 
-    pipe = attach_writer(pipe, args.out_image)
+    pipe = attach_writer(pipe, args.output)
 
     # run the pipeline
     pipe.Update()
 
-    return 1
+    return
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
