@@ -24,27 +24,121 @@ class PipeStage(object):
         self.params = {}
 
     def in_type(self):
-        '''Get the itk type that is input for this pipe stage.'''
+        '''Get the itk type that is input for this pipe stage. Default
+        behavior is to draw automatically from the output of the previous
+        stage.'''
         return self.prev.out_type()
 
     def out_type(self):
-        '''Get the itk type that is output for this pipe stage.'''
+        '''Get the itk type that is output for this pipe stage. By default the
+        behavior is to simply output with the same type as provided for input.
+        '''
         return self.in_type()
 
     def execute(self):
         '''Execute this and all previous stages recursively to build output
-        from this pipeline stage.'''
+        from this pipeline stage. Returns the result of a GetOutput call to
+        the wrapped itk object.'''
         instance = self.template[self.in_type(), self.out_type()].New()
 
         for param in self.params:
-            method_name = "Set" + param
-            set_method = getattr(instance, method_name)
-
+            set_method = getattr(instance, param)
             set_method(self.params[param])
 
-        instance.SetInput(self.prev.GetOutput())
-        self.prev.execute()
+        instance.SetInput(self.prev.execute())
         instance.Update()
+
+        return instance.GetOutput()
+
+
+class CurvatureFlowPipeStage(PipeStage):
+    '''An itk PipeStage that implementsv CurvatureFlowImageFilter.'''
+
+    def __init__(self, previous_stage, iterations, timestep):
+        # pylint: disable=no-name-in-module,no-member
+        from itk import CurvatureFlowImageFilter
+
+        template = CurvatureFlowImageFilter
+        super(CurvatureFlowPipeStage, self).__init__(self,
+                                                     template,
+                                                     previous_stage)
+
+        self.params = {"SetNumberOfIterations": iterations,
+                       "SetTimeStep": timestep}
+
+
+class ConfidenceConnectPipeStage(PipeStage):
+    '''An itk PipeStage that implements
+    ConfidenceConnectedImageFilter. Default values for parameters
+    drawn from ITKExamples SegmentWithGeodesicActiveContourLevelSet.'''
+
+    # pylint: disable=too-many-arguments
+    def __init__(self, previous_stage, iterations, stddevs, neighborhood,
+                 seed):
+        # pylint: disable=no-name-in-module
+        from itk import ConfidenceConnectedImageFilter
+
+        template = ConfidenceConnectedImageFilter
+        super(ConfidenceConnectPipeStage, self).__init__(self,
+                                                         template,
+                                                         previous_stage)
+
+        self.params = {"AddSeed": seed,
+                       "SetMultiplier": stddevs,
+                       "SetNumberOfIterations": iterations,
+                       "SetInitialNeighborhoodRadius": neighborhood}
+
+
+class FileReader(object):
+    '''A PipeStage that can initiate a pipeline using an itk ImageFileReader.
+    '''
+
+    def __init__(self, fname, img_type):
+        self.fname = fname
+        self.img_type = img_type
+
+    def out_type(self):
+        '''Get type of image read by the wrapped ImageFileReader. This is
+        determined based upon user choice at construction.'''
+        return self.img_type
+
+    def execute(self):
+        '''Execute this pipeline stage--that is, read the image from file and
+        build the data into the appropriate itk Image object.'''
+        from itk import ImageFileReader  # pylint: disable=no-name-in-module
+
+        reader = ImageFileReader[self.out_type()].New()
+
+        reader.SetFileName(self.fname)
+
+        reader.Update()
+
+        return reader.GetOutput()
+
+
+class FileWriter(object):
+    '''A PipeStage that can close a pipeline by writing to file with an itk
+    ImageFileWriter.'''
+
+    def __init__(self, previous_stage, fname):
+        self.fname = fname
+        self.prev = previous_stage
+
+    def in_type(self):
+        '''The type of image provided to the ImageFileWriter by the pipeline.
+        '''
+        return self.prev.out_type()
+
+    def execute(self):
+        '''Execute this pipeline stage--that is, write to file the itk Image
+        provided by the input to this pipeline.'''
+        from itk import ImageFileWriter  # pylint: disable=no-name-in-module
+
+        writer = ImageFileWriter[self.in_type()].New()
+        writer.SetFileName(self.fname)
+
+        writer.SetInput(self.prev.execute())
+        writer.Update()
 
 
 class AnisoDiffStage(PipeStage):
@@ -60,9 +154,9 @@ class AnisoDiffStage(PipeStage):
         template = CurvatureAnisotropicDiffusionImageFilter
         super(AnisoDiffStage, self).__init__(self, template, previous_stage)
 
-        self.params = {"TimeStep": timestep,
-                       "NumberOfIterations": iterations,
-                       "ConductanceParameter": conductance}
+        self.params = {"SetTimeStep": timestep,
+                       "SetNumberOfIterations": iterations,
+                       "SetConductanceParameter": conductance}
 
 
 def attach_gradient_mag(pipe, sigma):
@@ -138,22 +232,6 @@ def attach_geodesic(pipe, feature_pipe, prop_scaling, iterations):
     return gaclsif
 
 
-def attach_flow_smooth(pipe, iterations, timestep):
-    '''Attach a CurvatureFlowImageFilter to the output of the given
-    filter stack.'''
-    # pylint: disable=no-name-in-module,no-member
-    from itk import CurvatureFlowImageFilter
-
-    cfif = CurvatureFlowImageFilter[IMG_F(), IMG_F()].New()
-
-    cfif.SetNumberOfIterations(iterations)
-    cfif.SetTimeStep(timestep)
-
-    cfif.SetInput(pipe.GetOutput())
-    cfif.Update()
-
-    return cfif
-
 
 def attach_converter(pipe, type_in, type_out):
     '''Attach a CastImageFilter to convert from one itk image type to
@@ -167,50 +245,3 @@ def attach_converter(pipe, type_in, type_out):
     conv.Update()
 
     return conv
-
-
-def attach_connect(pipe, iterations, stddevs, neighborhood, seed):
-    '''Attach a ConfidenceConnectedImageFilter to the output of the given
-    filter stack.'''
-    # pylint: disable=no-name-in-module, no-member
-    from itk import ConfidenceConnectedImageFilter
-
-    ccif = ConfidenceConnectedImageFilter[IMG_F(), IMG_UC()].New()
-
-    ccif.AddSeed(seed)
-    ccif.SetNumberOfIterations(iterations)
-    ccif.SetMultiplier(stddevs)
-    ccif.SetInitialNeighborhoodRadius(neighborhood)
-
-    ccif.SetInput(pipe.GetOutput())
-
-    ccif.Update()
-
-    return ccif
-
-
-def get_reader(fname):
-    '''Initialize a filter pipeline by building an ImageFileReader based on
-    the given file 'fname'.'''
-    from itk import ImageFileReader  # pylint: disable=no-name-in-module
-
-    reader = ImageFileReader[IMG_F()].New()
-
-    reader.SetFileName(fname)
-
-    reader.Update()
-
-    return reader
-
-
-def attach_writer(pipe, fname):
-    '''Initialize and attach an ImageFileWriter to the end of a filter pipeline
-    to write out the result.'''
-    from itk import ImageFileWriter  # pylint: disable=no-name-in-module
-
-    writer = ImageFileWriter[IMG_UC()].New()
-
-    writer.SetInput(pipe.GetOutput())
-    writer.SetFileName(fname)
-
-    return writer
