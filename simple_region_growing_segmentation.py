@@ -6,20 +6,7 @@ availiable through ITK.'''
 
 import sys
 import argparse
-
-
-def IMG_UC():  # pylint: disable=invalid-name
-    '''dynamically load unsigned character 3d image type to preven super long
-    loads when loading the script.'''
-    from itk import UC, Image  # pylint: disable=no-name-in-module
-    return Image[UC, 3]
-
-
-def IMG_F():  # pylint: disable=invalid-name
-    '''dynamically load 3d float image type to preven super long loads when
-    loading the script.'''
-    from itk import F, Image  # pylint: disable=no-name-in-module
-    return Image[F, 3]
+import itk_attach
 
 
 def process_command_line(argv):
@@ -64,89 +51,7 @@ def process_command_line(argv):
         ext = args.image[args.image.rfind('.'):]
         args.output = args.image.rstrip(ext) + "-label" + ext
 
-    print "Running with settings:"
-    "\n".join([str(key)+": "+str(args.__getattribute__(key))
-               for key in vars(args)])
-
     return args
-
-
-def attach_smooth(pipe, iterations, timestep):
-    '''Attach a CurvatureFlowImageFilter to the output of the given
-    filter stack.'''
-    # pylint: disable=no-name-in-module,no-member
-    from itk import CurvatureFlowImageFilter
-
-    cfif = CurvatureFlowImageFilter[IMG_F(), IMG_F()].New()
-
-    cfif.SetNumberOfIterations(iterations)
-    cfif.SetTimeStep(timestep)
-
-    cfif.SetInput(pipe.GetOutput())
-    cfif.Update()
-
-    return cfif
-
-
-def attach_converter(pipe, type_in, type_out):
-    '''Attach a CastImageFilter to convert from one itk image type to
-    another.'''
-    # pylint: disable=no-name-in-module
-    from itk import CastImageFilter
-
-    conv = CastImageFilter[type_in, type_out].New()
-
-    conv.SetInput(pipe.GetOutput())
-    conv.Update()
-
-    return conv
-
-
-def attach_connect(pipe, iterations, stddevs, neighborhood, seed):
-    '''Attach a ConfidenceConnectedImageFilter to the output of the given
-    filter stack.'''
-    # pylint: disable=no-name-in-module, no-member
-    from itk import ConfidenceConnectedImageFilter
-
-    ccif = ConfidenceConnectedImageFilter[IMG_F(), IMG_UC()].New()
-
-    ccif.AddSeed(seed)
-    ccif.SetNumberOfIterations(iterations)
-    ccif.SetMultiplier(stddevs)
-    ccif.SetInitialNeighborhoodRadius(neighborhood)
-
-    ccif.SetInput(pipe.GetOutput())
-
-    ccif.Update()
-
-    return ccif
-
-
-def get_reader(fname):
-    '''Initialize a filter pipeline by building an ImageFileReader based on
-    the given file 'fname'.'''
-    from itk import ImageFileReader  # pylint: disable=no-name-in-module
-
-    reader = ImageFileReader[IMG_F()].New()
-
-    reader.SetFileName(fname)
-
-    reader.Update()
-
-    return reader
-
-
-def attach_writer(pipe, fname):
-    '''Initialize and attach an ImageFileWriter to the end of a filter pipeline
-    to write out the result.'''
-    from itk import ImageFileWriter  # pylint: disable=no-name-in-module
-
-    writer = ImageFileWriter[IMG_UC()].New()
-
-    writer.SetInput(pipe.GetOutput())
-    writer.SetFileName(fname)
-
-    return writer
 
 
 def main(argv=None):
@@ -156,18 +61,18 @@ def main(argv=None):
 
     args = process_command_line(argv)
 
-    pipe = get_reader(args.image)
+    pipe = itk_attach.get_reader(args.image)
 
-    pipe = attach_smooth(pipe,
-                         args.smooth_iterations,
-                         args.smooth_timestep)
+    pipe = itk_attach.attach_smooth(pipe,
+                                    args.smooth_iterations,
+                                    args.smooth_timestep)
 
-    pipe = attach_connect(pipe,
-                          args.connect_iterations,
-                          args.connect_stddevs,
-                          args.connect_neighborhood,
-                          args.seed)
-    pipe = attach_writer(pipe, args.output)
+    pipe = itk_attach.attach_connect(pipe,
+                                     args.connect_iterations,
+                                     args.connect_stddevs,
+                                     args.connect_neighborhood,
+                                     args.seed)
+    pipe = itk_attach.attach_writer(pipe, args.output)
 
     # run the pipeline
     pipe.Update()
