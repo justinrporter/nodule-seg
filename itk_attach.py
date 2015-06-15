@@ -35,11 +35,21 @@ class PipeStage(object):
         '''
         return self.in_type()
 
+    def instantiate(self):
+        '''Instantiate an instance of the wrapped class template for use.
+        Useful to override in cases where there is unusual templating.'''
+        return self.template[self.in_type(), self.out_type()].New()
+
+    def _bind_input(self, instance):
+        '''Bind the input of the previous pipeline stage to an instance of the
+        class template.'''
+        instance.SetInput(self.prev.execute())
+
     def execute(self):
         '''Execute this and all previous stages recursively to build output
         from this pipeline stage. Returns the result of a GetOutput call to
         the wrapped itk object.'''
-        instance = self.template[self.in_type(), self.out_type()].New()
+        instance = self.instantiate()
 
         for param in self.params:
             set_method = getattr(instance, param)
@@ -163,89 +173,106 @@ class AnisoDiffStage(PipeStage):
     def __init__(self, previous_stage, timestep=0.125, iterations=5,
                  conductance=9.0):
         # pylint: disable=no-name-in-module
-        from itk import CurvatureAnisotropicDiffusionImageFilter
+        from itk import CurvatureAnisotropicDiffusionImageFilter as templ
 
-        template = CurvatureAnisotropicDiffusionImageFilter
-        super(AnisoDiffStage, self).__init__(template, previous_stage)
+        super(AnisoDiffStage, self).__init__(templ, previous_stage)
 
         self.params = {"SetTimeStep": timestep,
                        "SetNumberOfIterations": iterations,
                        "SetConductanceParameter": conductance}
 
 
-def attach_gradient_mag(pipe, sigma):
-    '''Attach a GradientMagnitudeRecursiveGaussianImageFilter to the given
-    filter pipeline/stack.'''
-    # pylint: disable=no-name-in-module
-    from itk import GradientMagnitudeRecursiveGaussianImageFilter
+class GradMagRecGaussStage(PipeStage):
+    '''An itk PipeStage that implements
+    GradientMagnitudeRecursiveGaussianImageFilter.'''
 
-    gmrgif = GradientMagnitudeRecursiveGaussianImageFilter[IMG_F(),
-                                                           IMG_F()].New()
+    def __init__(self, previous_stage, sigma):
+        # pylint: disable=no-name-in-module
+        from itk import GradientMagnitudeRecursiveGaussianImageFilter as templ
 
-    gmrgif.SetInput(pipe.GetOutput())
-    gmrgif.SetSigma(sigma)
+        super(GradMagRecGaussStage, self).__init__(templ, previous_stage)
 
-    gmrgif.Update()
-
-    return gmrgif
+        self.params = {"SetSigma": sigma}
 
 
-def attach_sigmoid(pipe, alpha, beta, out_max=1.0, out_min=0.0):
-    '''Attach a SigmoidImageFilter to the output of the given
-    filter stack. Output min/max drawn from ITKExamples
-    SegmentWithGeodesicActiveContourLevelSet'''
-    # pylint: disable=no-name-in-module,no-member
-    from itk import SigmoidImageFilter
+class SigmoidStage(PipeStage):
+    '''An itk PipeStage that implements SigmoidImageFilter. Output min/max
+    drawn from ITKExamples SegmentWithGeodesicActiveContourLevelSet.'''
 
-    sif = SigmoidImageFilter[IMG_F(), IMG_F()].New()
+    # pylint: disable=too-many-arguments
+    def __init__(self, previous_stage, alpha, beta, out_max=1.0, out_min=0.0):
+        # pylint: disable=no-name-in-module,no-member
+        from itk import SigmoidImageFilter
 
-    sif.SetOutputMinimum(out_min)
-    sif.SetOutputMaximum(out_max)
-    sif.SetAlpha(alpha)
-    sif.SetBeta(beta)
+        template = SigmoidImageFilter
+        super(SigmoidStage, self).__init__(template, previous_stage)
 
-    sif.SetInput(pipe.GetOutput())
-    sif.Update()
-
-    return sif
+        self.params = {"SetOutputMinimum": out_min,
+                       "SetOutputMaximum": out_max,
+                       "SetAlpha": alpha,
+                       "SetBeta": beta}
 
 
-def attach_fast_marching(pipe):
-    '''Attach a FastMarchingImageFilter to the output of the given
-    filter stack.'''
-    # pylint: disable=no-name-in-module,no-member
-    from itk import FastMarchingImageFilter
+class FastMarchingStage(PipeStage):
+    '''An itk PipeStage that implements SigmoidImageFilter.'''
 
-    fmif = FastMarchingImageFilter[IMG_F(), IMG_F()].New()
+    def __init__(self, previous_stage):
+        # pylint: disable=no-name-in-module,no-member
+        from itk import FastMarchingImageFilter
 
-    fmif.SetInput(pipe.GetOutput())
-    fmif.Update()
-
-    return fmif
+        template = FastMarchingImageFilter
+        super(FastMarchingStage, self).__init__(template, previous_stage)
 
 
-def attach_geodesic(pipe, feature_pipe, prop_scaling, iterations):
-    '''Attach a FastMarchingImageFilter to the output of the given
-    filter stack. It takes input from two pipes, a feature (binary?) pipe and
-    a normal pipe'''
-    # pylint: disable=no-name-in-module,no-member
-    from itk import GeodesicActiveContourLevelSetImageFilter as GeodesicFilter
-    from itk import F as itk_F
+class GeoContourLSetStage(PipeStage):
+    '''An itk PipeStage that implements a
+    GeodesicActiveContourLevelSetImageFilter in the pipestage framework.'''
 
-    gaclsif = GeodesicFilter[IMG_F(), IMG_F(), itk_F].New()
+    def __init__(self, previous_stage, feature_stage, scaling, iterations):
+        # pylint: disable=no-name-in-module,no-member
+        from itk import GeodesicActiveContourLevelSetImageFilter as Geodesic
 
-    gaclsif.SetPropagationScaling(prop_scaling)
-    gaclsif.SetCurvatureScaling(1.0)
-    gaclsif.SetAdvectionScaling(1.0)
-    gaclsif.SetMaximumRMSError(0.02)
-    gaclsif.SetNumberOfIterations(iterations)
+        super(GeoContourLSetStage, self).__init__(Geodesic, previous_stage)
+        self.prev_feature = feature_stage
 
-    gaclsif.SetInput(pipe.GetOutput())
-    gaclsif.SetFeatureImage(feature_pipe.GetOutput())
+        self.params = {"SetPropagationScaling": scaling,
+                       "SetNumberOfIterations": iterations,
+                       "SetCurvatureScaling": 1.0,
+                       "SetAdvectionScaling": 1.0,
+                       "SetMaximumRMSError": 0.02}
 
-    return gaclsif
+    def _bind_input(self, instance):
+        instance.SetInput(self.prev.execute())
+        instance.SetFeatureInput(self.prev_feature.execute())
+
+    def instantiate(self):
+        img_type = self.in_type()
+        feature_type = self.prev_feature.out_type()
+
+        for avail_templ in self.template:
+            if avail_templ[0] == img_type and avail_templ[1] == feature_type:
+               return self.template[avail_templ]
+
+        s = " ".join(["Could not instantiate", str(self.templ), "because no ",
+                      "valid template combination of", str(img_type), "and",
+                      str(feature_type), "could be found. Possibilites were:",
+                      str([t for t in self.template])])
+        raise TypeError(s)
 
 
+class ConverterStage(PipeStage):
+    '''An itk PipeStage that implements CastImageFilter to convert from the
+    pipeline output type to the specified type.'''
+
+    def __init__(self, previous_stage, type_out):
+        # pylint: disable=no-name-in-module
+        from itk import CastImageFilter
+
+        super(ConverterStage, self).__init__(CastImageFilter, previous_stage)
+        self.type_out = type_out
+
+    def type_out(self):
+        return self.type_out
 
 def attach_converter(pipe, type_in, type_out):
     '''Attach a CastImageFilter to convert from one itk image type to
