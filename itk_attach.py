@@ -15,7 +15,130 @@ def IMG_F():  # pylint: disable=invalid-name
     return Image[F, 3]
 
 
-def attach_smooth(pipe, iterations, timestep):
+class PipeStage(object):
+    '''A stub itk pipeline stage, to be inherited from by other classes.'''
+
+    def __init__(self, template, previous_stage):
+        self.prev = previous_stage
+        self.template = template
+        self.params = {}
+
+    def in_type(self):
+        '''Get the itk type that is input for this pipe stage.'''
+        return self.prev.out_type()
+
+    def out_type(self):
+        '''Get the itk type that is output for this pipe stage.'''
+        return self.in_type()
+
+    def execute(self):
+        '''Execute this and all previous stages recursively to build output
+        from this pipeline stage.'''
+        instance = self.template[self.in_type(), self.out_type()].New()
+
+        for param in self.params:
+            method_name = "Set" + param
+            set_method = getattr(instance, method_name)
+
+            set_method(self.params[param])
+
+        instance.SetInput(self.prev.GetOutput())
+        self.prev.execute()
+        instance.Update()
+
+
+class AnisoDiffStage(PipeStage):
+    '''An itk PipeStage that implements
+    CurvatureAnisotropicDiffusionImageFilter. Default values for parameters
+    drawn from ITKExamples SegmentWithGeodesicActiveContourLevelSet.'''
+
+    def __init__(self, previous_stage, timestep=0.125, iterations=5,
+                 conductance=9.0):
+        # pylint: disable=no-name-in-module
+        from itk import CurvatureAnisotropicDiffusionImageFilter
+
+        template = CurvatureAnisotropicDiffusionImageFilter
+        super(AnisoDiffStage, self).__init__(self, template, previous_stage)
+
+        self.params = {"TimeStep": timestep,
+                       "NumberOfIterations": iterations,
+                       "ConductanceParameter": conductance}
+
+
+def attach_gradient_mag(pipe, sigma):
+    '''Attach a GradientMagnitudeRecursiveGaussianImageFilter to the given
+    filter pipeline/stack.'''
+    # pylint: disable=no-name-in-module
+    from itk import GradientMagnitudeRecursiveGaussianImageFilter
+
+    gmrgif = GradientMagnitudeRecursiveGaussianImageFilter[IMG_F(),
+                                                           IMG_F()].New()
+
+    gmrgif.SetInput(pipe.GetOutput())
+    gmrgif.SetSigma(sigma)
+
+    gmrgif.Update()
+
+    return gmrgif
+
+
+def attach_sigmoid(pipe, alpha, beta, out_max=1.0, out_min=0.0):
+    '''Attach a SigmoidImageFilter to the output of the given
+    filter stack. Output min/max drawn from ITKExamples
+    SegmentWithGeodesicActiveContourLevelSet'''
+    # pylint: disable=no-name-in-module,no-member
+    from itk import SigmoidImageFilter
+
+    sif = SigmoidImageFilter[IMG_F(), IMG_F()].New()
+
+    sif.SetOutputMinimum(out_min)
+    sif.SetOutputMaximum(out_max)
+    sif.SetAlpha(alpha)
+    sif.SetBeta(beta)
+
+    sif.SetInput(pipe.GetOutput())
+    sif.Update()
+
+    return sif
+
+
+def attach_fast_marching(pipe):
+    '''Attach a FastMarchingImageFilter to the output of the given
+    filter stack.'''
+    # pylint: disable=no-name-in-module,no-member
+    from itk import FastMarchingImageFilter
+
+    fmif = FastMarchingImageFilter[IMG_F(), IMG_F()].New()
+
+    fmif.SetInput(pipe.GetOutput())
+    fmif.Update()
+
+    return fmif
+
+
+def attach_geodesic(pipe, feature_pipe, prop_scaling, iterations):
+    '''Attach a FastMarchingImageFilter to the output of the given
+    filter stack. It takes input from two pipes, a feature (binary?) pipe and
+    a normal pipe'''
+    # pylint: disable=no-name-in-module,no-member
+    from itk import GeodesicActiveContourLevelSetImageFilter as GeodesicFilter
+    from itk import F as itk_F
+
+    gaclsif = GeodesicFilter[IMG_F(), IMG_F(), itk_F].New()
+
+    gaclsif.SetPropagationScaling(prop_scaling)
+    gaclsif.SetCurvatureScaling(1.0)
+    gaclsif.SetAdvectionScaling(1.0)
+    gaclsif.SetMaximumRMSError(0.02)
+    gaclsif.SetNumberOfIterations(iterations)
+
+    gaclsif.SetInput(pipe.GetOutput())
+    gaclsif.SetFeatureImage(feature_pipe.GetOutput())
+
+    return gaclsif
+
+
+def attach_flow_smooth(pipe, iterations, timestep):
     '''Attach a CurvatureFlowImageFilter to the output of the given
     filter stack.'''
     # pylint: disable=no-name-in-module,no-member

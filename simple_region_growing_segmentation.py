@@ -63,9 +63,9 @@ def main(argv=None):
 
     pipe = itk_attach.get_reader(args.image)
 
-    pipe = itk_attach.attach_smooth(pipe,
-                                    args.smooth_iterations,
-                                    args.smooth_timestep)
+    pipe = itk_attach.attach_flow_smooth(pipe,
+                                         args.smooth_iterations,
+                                         args.smooth_timestep)
 
     pipe = itk_attach.attach_connect(pipe,
                                      args.connect_iterations,
