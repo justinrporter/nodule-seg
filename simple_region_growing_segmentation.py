@@ -77,7 +77,7 @@ def main(argv=None):
     # run the pipeline
     pipe.Update()
 
-    return
+    return 1
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
