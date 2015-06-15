@@ -55,7 +55,7 @@ class PipeStage(object):
             set_method = getattr(instance, param)
             set_method(self.params[param])
 
-        instance.SetInput(self.prev.execute())
+        self._bind_input(instance)
         instance.Update()
 
         return instance.GetOutput()
@@ -170,7 +170,7 @@ class AnisoDiffStage(PipeStage):
     CurvatureAnisotropicDiffusionImageFilter. Default values for parameters
     drawn from ITKExamples SegmentWithGeodesicActiveContourLevelSet.'''
 
-    def __init__(self, previous_stage, timestep=0.125, iterations=5,
+    def __init__(self, previous_stage, timestep=0.01, iterations=5,
                  conductance=9.0):
         # pylint: disable=no-name-in-module
         from itk import CurvatureAnisotropicDiffusionImageFilter as templ
@@ -242,8 +242,8 @@ class GeoContourLSetStage(PipeStage):
                        "SetMaximumRMSError": 0.02}
 
     def _bind_input(self, instance):
-        instance.SetInput(self.prev.execute())
-        instance.SetFeatureInput(self.prev_feature.execute())
+        super(GeoContourLSetStage, self)._bind_input(instance)
+        instance.SetFeatureImage(self.prev_feature.execute())
 
     def instantiate(self):
         img_type = self.in_type()
@@ -251,7 +251,7 @@ class GeoContourLSetStage(PipeStage):
 
         for avail_templ in self.template:
             if avail_templ[0] == img_type and avail_templ[1] == feature_type:
-               return self.template[avail_templ]
+               return self.template[avail_templ].New()
 
         s = " ".join(["Could not instantiate", str(self.templ), "because no ",
                       "valid template combination of", str(img_type), "and",
@@ -273,16 +273,3 @@ class ConverterStage(PipeStage):
 
     def type_out(self):
         return self.type_out
-
-def attach_converter(pipe, type_in, type_out):
-    '''Attach a CastImageFilter to convert from one itk image type to
-    another.'''
-    # pylint: disable=no-name-in-module
-    from itk import CastImageFilter
-
-    conv = CastImageFilter[type_in, type_out].New()
-
-    conv.SetInput(pipe.GetOutput())
-    conv.Update()
-
-    return conv
