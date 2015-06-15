@@ -59,8 +59,7 @@ class CurvatureFlowPipeStage(PipeStage):
         from itk import CurvatureFlowImageFilter
 
         template = CurvatureFlowImageFilter
-        super(CurvatureFlowPipeStage, self).__init__(self,
-                                                     template,
+        super(CurvatureFlowPipeStage, self).__init__(template,
                                                      previous_stage)
 
         self.params = {"SetNumberOfIterations": iterations,
@@ -79,8 +78,7 @@ class ConfidenceConnectPipeStage(PipeStage):
         from itk import ConfidenceConnectedImageFilter
 
         template = ConfidenceConnectedImageFilter
-        super(ConfidenceConnectPipeStage, self).__init__(self,
-                                                         template,
+        super(ConfidenceConnectPipeStage, self).__init__(template,
                                                          previous_stage)
 
         self.params = {"AddSeed": seed,
@@ -88,12 +86,28 @@ class ConfidenceConnectPipeStage(PipeStage):
                        "SetNumberOfIterations": iterations,
                        "SetInitialNeighborhoodRadius": neighborhood}
 
+    def out_type(self):
+        '''ConfidenceConnectedImageFilter is only able to output as unsigned
+        characters.'''
+        availiable_out_types = [pair[1] for pair in self.template
+                                if pair[0] == self.in_type()]
+
+        if len(availiable_out_types) == 0:
+            s = "".join(["ConfidenceConnectPipeStage could not find an",
+                         "acceptable output type based upon output type",
+                         str(self.in_type()), ". Options were:",
+                         str(self.template.GetTypes())])
+            raise TypeError(s)
+
+        # temporary hack
+        return availiable_out_types[-1]
+
 
 class FileReader(object):
     '''A PipeStage that can initiate a pipeline using an itk ImageFileReader.
     '''
 
-    def __init__(self, fname, img_type):
+    def __init__(self, fname, img_type=IMG_F()):
         self.fname = fname
         self.img_type = img_type
 
@@ -152,7 +166,7 @@ class AnisoDiffStage(PipeStage):
         from itk import CurvatureAnisotropicDiffusionImageFilter
 
         template = CurvatureAnisotropicDiffusionImageFilter
-        super(AnisoDiffStage, self).__init__(self, template, previous_stage)
+        super(AnisoDiffStage, self).__init__(template, previous_stage)
 
         self.params = {"SetTimeStep": timestep,
                        "SetNumberOfIterations": iterations,

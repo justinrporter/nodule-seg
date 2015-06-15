@@ -61,21 +61,22 @@ def main(argv=None):
 
     args = process_command_line(argv)
 
-    pipe = itk_attach.get_reader(args.image)
+    pipe = itk_attach.FileReader(args.image)
 
-    pipe = itk_attach.attach_flow_smooth(pipe,
-                                         args.smooth_iterations,
-                                         args.smooth_timestep)
+    pipe = itk_attach.CurvatureFlowPipeStage(pipe,
+                                             args.smooth_iterations,
+                                             args.smooth_timestep)
 
-    pipe = itk_attach.attach_connect(pipe,
-                                     args.connect_iterations,
-                                     args.connect_stddevs,
-                                     args.connect_neighborhood,
-                                     args.seed)
-    pipe = itk_attach.attach_writer(pipe, args.output)
+    pipe = itk_attach.ConfidenceConnectPipeStage(pipe,
+                                                 args.connect_iterations,
+                                                 args.connect_stddevs,
+                                                 args.connect_neighborhood,
+                                                 args.seed)
+
+    pipe = itk_attach.FileWriter(pipe, args.output)
 
     # run the pipeline
-    pipe.Update()
+    pipe.execute()
 
     return 1
 
