@@ -1,18 +1,18 @@
 '''A library of itk-attach functions, to be used to build out itk pipelines.'''
 
 
-def IMG_UC():  # pylint: disable=invalid-name
+def IMG_UC(dim=3):  # pylint: disable=invalid-name
     '''dynamically load unsigned character 3d image type to preven super long
     loads on import.'''
     from itk import UC, Image  # pylint: disable=no-name-in-module
-    return Image[UC, 3]
+    return Image[UC, dim]
 
 
-def IMG_F():  # pylint: disable=invalid-name
+def IMG_F(dim=3):  # pylint: disable=invalid-name
     '''dynamically load 3d float image type to preven super long loads when
     on import.'''
     from itk import F, Image  # pylint: disable=no-name-in-module
-    return Image[F, 3]
+    return Image[F, dim]
 
 
 def extract_image_type(img_type):
@@ -76,7 +76,7 @@ class PipeStage(object):
         return instance.GetOutput()
 
 
-class CurvatureFlowPipeStage(PipeStage):
+class CurvatureFlowStage(PipeStage):
     '''An itk PipeStage that implementsv CurvatureFlowImageFilter.'''
 
     def __init__(self, previous_stage, iterations, timestep):
@@ -84,8 +84,8 @@ class CurvatureFlowPipeStage(PipeStage):
         from itk import CurvatureFlowImageFilter
 
         template = CurvatureFlowImageFilter
-        super(CurvatureFlowPipeStage, self).__init__(template,
-                                                     previous_stage)
+        super(CurvatureFlowStage, self).__init__(template,
+                                                 previous_stage)
 
         self.params = {"SetNumberOfIterations": iterations,
                        "SetTimeStep": timestep}
@@ -343,7 +343,8 @@ class BinaryThreshStage(PipeStage):
 
 class ConverterStage(PipeStage):
     '''An itk PipeStage that implements CastImageFilter to convert from the
-    pipeline output type to the specified type.'''
+    pipeline output type to the specified type. Dimensionality is determined
+    dynamically based upon the input pipe stage.'''
 
     def __init__(self, previous_stage, type_out):
         # pylint: disable=no-name-in-module
@@ -353,4 +354,10 @@ class ConverterStage(PipeStage):
         self.type_out = type_out
 
     def out_type(self):
-        return self.type_out
+        from itk import F, Image  # pylint: disable=no-name-in-module
+        if self.type_out is float:
+            self.type_out = F
+
+        dim = extract_image_type(self.in_type())[1]
+
+        return Image[self.type_out, dim]
