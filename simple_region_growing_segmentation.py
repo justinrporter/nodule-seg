@@ -71,7 +71,7 @@ def main(argv=None):
                                                  args.connect_iterations,
                                                  args.connect_stddevs,
                                                  args.connect_neighborhood,
-                                                 args.seed)
+                                                 [args.seed])
 
     pipe = itk_attach.FileWriter(pipe, args.output)
 
