@@ -15,6 +15,17 @@ def IMG_F():  # pylint: disable=invalid-name
     return Image[F, 3]
 
 
+def extract_image_type(img_type):
+    '''Awful hack to get around the fact that there's apparently no way to ask
+    an itk Image its PixelType'''
+    import itk
+
+    type_abbrev = img_type.__name__[img_type.__name__.rfind("Image")+5:-1]
+    dim = int(img_type.__name__[-1])
+
+    return (getattr(itk, type_abbrev), dim)
+
+
 class PipeStage(object):
     '''A stub itk pipeline stage, to be inherited from by other classes.'''
 
@@ -51,9 +62,13 @@ class PipeStage(object):
         the wrapped itk object.'''
         instance = self.instantiate()
 
-        for param in self.params:
-            set_method = getattr(instance, param)
-            set_method(self.params[param])
+        try:
+            for param in self.params:
+                set_method = getattr(instance, param)
+                set_method(self.params[param])
+        except TypeError:
+            print "Failed to set the parameter", param, "on", type(instance)
+            raise
 
         self._bind_input(instance)
         instance.Update()
@@ -214,14 +229,53 @@ class SigmoidStage(PipeStage):
 
 
 class FastMarchingStage(PipeStage):
-    '''An itk PipeStage that implements SigmoidImageFilter.'''
+    '''An itk PipeStage that implements SigmoidImageFilter. It can be run as a
+    pure distance calculator with the 'imageless' parameter set to true (an
+    input pipe is still required to produce correct output size) or as a true
+    image segmentation filter with 'imageless' set to false'''
 
-    def __init__(self, previous_stage):
+    def __init__(self, previous_stage, imageless, seeds, seed_value):
         # pylint: disable=no-name-in-module,no-member
         from itk import FastMarchingImageFilter
 
         template = FastMarchingImageFilter
         super(FastMarchingStage, self).__init__(template, previous_stage)
+
+        self.imageless = imageless
+
+        self.params = {"SetTrialPoints": self.build_seeds(seeds, seed_value),
+                       "SetSpeedConstant": 1.0,
+                       # "SetStoppingValue": 100
+                       }
+
+    def _bind_input(self, instance):
+        output = self.prev.execute()
+
+        instance.SetOutputSize(output.GetBufferedRegion().GetSize())
+        instance.SetOutputSpacing(output.GetSpacing())
+
+        if not self.imageless:
+            instance.SetInput(output)
+
+    def build_seeds(self, seeds, seed_value):
+        '''Construct an itk.VectorContainer of itk.LevelSetNode object from
+        given input seeds.'''
+        # pylint: disable=no-name-in-module,no-member
+        from itk import LevelSetNode, VectorContainer, UI
+
+        (px_type, dim) = extract_image_type(self.in_type())
+        node_type = LevelSetNode[px_type, dim]
+
+        seed_vect = VectorContainer[UI, node_type].New()
+        seed_vect.Initialize()
+
+        for i, seed in enumerate(seeds):
+            node = node_type()
+            node.SetValue(-seed_value)
+            node.SetIndex(seed)
+            seed_vect.InsertElement(i, node)
+
+        return seed_vect
 
 
 class GeoContourLSetStage(PipeStage):
@@ -251,13 +305,40 @@ class GeoContourLSetStage(PipeStage):
 
         for avail_templ in self.template:
             if avail_templ[0] == img_type and avail_templ[1] == feature_type:
-               return self.template[avail_templ].New()
+                return self.template[avail_templ].New()
 
-        s = " ".join(["Could not instantiate", str(self.templ), "because no ",
-                      "valid template combination of", str(img_type), "and",
+        s = " ".join(["Could not instantiate", str(self.template), "because ",
+                      "no valid template combination of", str(img_type), "and",
                       str(feature_type), "could be found. Possibilites were:",
                       str([t for t in self.template])])
         raise TypeError(s)
+
+
+class BinaryThreshStage(PipeStage):
+    '''An itk PipeStage that implements the BinaryThresholdImageFilter.'''
+
+    def __init__(self, previous_stage, output_type=None):
+        # pylint: disable=no-name-in-module,no-member
+        from itk import BinaryThresholdImageFilter as BinThresh
+        from itk import NumericTraits
+
+        super(BinaryThreshStage, self).__init__(BinThresh, previous_stage)
+
+        self.output_type = output_type
+        px_type = extract_image_type(self.out_type())[0]
+
+        self.params['SetLowerThreshold'] = -1000.0
+        self.params['SetUpperThreshold'] = 0.0
+        self.params['SetOutsideValue'] = NumericTraits[px_type].min()
+        self.params['SetInsideValue'] = NumericTraits[px_type].max()
+
+    def out_type(self):
+        if not self.output_type:
+            avail_templ = [t[1] for t in self.template
+                           if t[0] == self.in_type()]
+            return avail_templ[-1]
+        else:
+            return self.output_type
 
 
 class ConverterStage(PipeStage):
@@ -271,5 +352,5 @@ class ConverterStage(PipeStage):
         super(ConverterStage, self).__init__(CastImageFilter, previous_stage)
         self.type_out = type_out
 
-    def type_out(self):
+    def out_type(self):
         return self.type_out
