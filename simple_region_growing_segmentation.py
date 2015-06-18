@@ -111,6 +111,7 @@ def main(argv=None):
     configs = process_command_line(argv)
 
     print "Segmenting", len(configs.images), "images"
+    times = []
 
     for fname in configs.images:
         basefname = os.path.basename(fname)
@@ -123,7 +124,11 @@ def main(argv=None):
         segment(fname, input2output(fname, configs.label, configs.path),
                 configs.smooth, configs.gauss, configs.connect)
 
-        print "took", datetime.datetime.now() - start
+        times.append(datetime.datetime.now() - start)
+        print "took", times[-1]
+
+    print "min/avg/max", min(times), \
+          sum(times, datetime.timedelta())/len(times), max(times)
 
     return 1
 
