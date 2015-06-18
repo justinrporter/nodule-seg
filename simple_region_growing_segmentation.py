@@ -6,8 +6,11 @@ availiable through ITK.'''
 
 import sys
 import argparse
-import itk_attach
 import os.path
+
+
+global intermediate_images  # pylint: disable=invalid-name,W0604
+intermediate_images = False  # pylint: disable=invalid-name
 
 
 def process_command_line(argv):
@@ -42,6 +45,9 @@ def process_command_line(argv):
                         help="The segmented file to output")
     parser.add_argument('--label', default="autolabel",
                         help="The label to add to each file.")
+    parser.add_argument('--intermediate_images', action="store_true",
+                        default=False, help="Produce pipeline intermediate " +
+                        "images (i.e. after each filter stage.")
 
     args = parser.parse_args(argv[1:])
 
@@ -55,6 +61,8 @@ def process_command_line(argv):
     configs.images = args.images
     configs.label = args.label
     configs.path = args.path
+
+    intermediate_images = args.intermediate_images
 
     configs.connect = {}
     configs.connect['neighborhood'] = args.connect_neighborhood
@@ -84,13 +92,19 @@ def input2output(fname, label, path=None):
 
 def segment(in_image, out_image, smooth_param, gauss_param, connect_param):
     '''Perform the segmentation aniso + gauss + confidence connected.'''
+    import itk_attach
+
     pipe = itk_attach.FileReader(in_image)
 
     pipe = itk_attach.AnisoDiffStage(pipe,
                                      smooth_param['timestep'],
                                      smooth_param['iterations'])
+    if intermediate_images:
+        itk_attach.FileWriter(pipe, "aniso.nii").execute()
 
     pipe = itk_attach.GradMagRecGaussStage(pipe, gauss_param['sigma'])
+    if intermediate_images:
+        itk_attach.FileWriter(pipe, "gauss.nii").execute()
 
     pipe = itk_attach.ConfidenceConnectStage(pipe,
                                              connect_param['seeds'],
@@ -112,6 +126,7 @@ def main(argv=None):
 
     print "Segmenting", len(configs.images), "images"
     times = []
+    skipped = []
 
     for fname in configs.images:
         basefname = os.path.basename(fname)
@@ -119,16 +134,28 @@ def main(argv=None):
         sys.stdout.flush()
         start = datetime.datetime.now()
 
-        configs.connect['seeds'] = configs.seeds[basefname]
+        try:
+            configs.connect['seeds'] = configs.seeds[basefname]
+        except KeyError as exc:
+            skipped.append(fname)
+            print "skipped (" + str(exc) + ")"
+            continue
 
-        segment(fname, input2output(fname, configs.label, configs.path),
-                configs.smooth, configs.gauss, configs.connect)
+        try:
+            segment(fname, input2output(fname, configs.label, configs.path),
+                    configs.smooth, configs.gauss, configs.connect)
+        except Exception:  # pylint: disable=W0703
+            skipped.append(fname)
+            continue
 
         times.append(datetime.datetime.now() - start)
         print "took", times[-1]
 
-    print "min/avg/max", min(times), \
-          sum(times, datetime.timedelta())/len(times), max(times)
+    if len(times) > 0:
+        print "min/avg/max", min(times), \
+              sum(times, datetime.timedelta())/len(times), max(times)
+    print "skipped", len(skipped), "files:"
+    print "\n".join(skipped)
 
     return 1
 
