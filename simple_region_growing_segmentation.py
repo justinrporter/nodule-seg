@@ -9,6 +9,7 @@ import argparse
 import itk_attach
 
 
+
 def process_command_line(argv):
     '''Parse the command line and do a first-pass on processing them into a
     format appropriate for the rest of the script.'''
@@ -16,67 +17,85 @@ def process_command_line(argv):
     parser = argparse.ArgumentParser(formatter_class=argparse.
                                      ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument("image", nargs=1,
+    parser.add_argument("images", nargs="+",
                         help="The image that should be segmented.")
-    parser.add_argument("--connect_iterations", type=int, default=10,
+    parser.add_argument("--connect_iterations", type=int, default=5,
                         help="The number of iterations to run" +
                              " ConfidenceConnectedImageFilter")
-    parser.add_argument('--connect_stddevs', type=float, default=2.0,
+    parser.add_argument('--connect_stddevs', type=float, default=4.0,
                         help="The number of voxel property standard devs " +
                         "to consider as connected.")
     parser.add_argument('--connect_neighborhood', type=int, default=1,
                         help='the number of local pixels around the seed to ' +
                         'use as the start of the calculation.')
-    parser.add_argument("--smooth_iterations", default=10, type=long,
+    parser.add_argument("--smooth_iterations", default=25, type=long,
                         help="The number of iterations to run" +
                              " CurvatureFlowImageFilter")
     parser.add_argument('--smooth_timestep', default=0.01, type=float,
                         help="The step size used by CurvatureFlowImageFilter")
-    parser.add_argument('--seed', nargs=3, type=int,
-                        help="An initial point (in voxel ids) at a 'hint' as" +
-                        " to where to begin segmentation.")
-    parser.add_argument('--debug', action="store_true", default=False,
-                        help="Debug mode. Pipeline stages are computed" +
-                        "stepwise, additional output is produced.")
-    parser.add_argument('-o', '--output', default=None,
+    parser.add_argument('--seeds', type=str,
+                        help="A list of files initial points in JSON format.")
+    parser.add_argument('--sigma', default=1.0, type=float,
+                        help="The stddev in units of image spacing for the " +
+                             "GradientMagnitudeRecursiveGaussianImageFilter.")
+    parser.add_argument('-p', '--path', default=None,
                         help="The segmented file to output")
+    parser.add_argument('--label', default="autolabel",
+                        help="The label to add to each file.")
 
     args = parser.parse_args(argv[1:])
 
-    # We only take one argument, but argparse puts it in a list with len == 1
-    args.image = args.image[0]
-
-    # Build a output filename from args.image
-    if args.output is None:
-        ext = args.image[args.image.rfind('.'):]
-        args.output = args.image.rstrip(ext) + "-label" + ext
+    import json
+    with open(args.seeds) as f:
+        seeds = json.loads(f.read())
+    args.seeds = seeds
 
     return args
+
+
+def input2output(fname, label):
+    '''Build output filename from input filename.'''
+    ext = fname[fname.rfind('.'):]
+    new_fname = fname.rstrip(ext) + "-" + label + ext
+
+    return new_fname
 
 
 def main(argv=None):
     '''Run the driver script for this module. This code only runs if we're
     being run as a script. Otherwise, it's silent and just exposes methods.'''
-    # pylint: disable=no-member
+    import os.path
+    import datetime
 
     args = process_command_line(argv)
 
-    pipe = itk_attach.FileReader(args.image)
+    print "Segmenting", len(args.images), "images"
 
-    pipe = itk_attach.CurvatureFlowPipeStage(pipe,
-                                             args.smooth_iterations,
-                                             args.smooth_timestep)
+    for fname in args.images:
+        basefname = os.path.basename(fname)
+        sys.stdout.write("Segmenting " + basefname + "... ")
+        sys.stdout.flush()
+        start = datetime.datetime.now()
 
-    pipe = itk_attach.ConfidenceConnectPipeStage(pipe,
+        pipe = itk_attach.FileReader(fname)
+
+        pipe = itk_attach.AnisoDiffStage(pipe,
+                                         args.smooth_timestep,
+                                         args.smooth_iterations)
+
+        pipe = itk_attach.GradMagRecGaussStage(pipe, args.sigma)
+
+        pipe = itk_attach.ConfidenceConnectStage(pipe,
+                                                 args.seeds[basefname],
                                                  args.connect_iterations,
                                                  args.connect_stddevs,
-                                                 args.connect_neighborhood,
-                                                 [args.seed])
+                                                 args.connect_neighborhood)
 
-    pipe = itk_attach.FileWriter(pipe, args.output)
+        pipe = itk_attach.FileWriter(pipe, input2output(fname, args.label))
 
-    # run the pipeline
-    pipe.execute()
+        # run the pipeline
+        pipe.execute()
+        print "took", datetime.datetime.now() - start
 
     return 1
 
