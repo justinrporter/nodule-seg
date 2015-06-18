@@ -9,7 +9,7 @@
         192,
         84
     ],
-    "003-DLR_B35F_cropped1.nii": [
+    "003-DLR_B35F_cropped.nii": [
         140,
         126,
         128
@@ -19,7 +19,7 @@
         130,
         135
     ],
-    "005-D-C_B35F_cropped1.nii": [
+    "005-D-C_B35F_cropped.nii": [
         88,
         81,
         83
@@ -59,7 +59,7 @@
         89,
         56
     ],
-    "014-JCB_B35F_cropped1.nii": [
+    "014-JCB_B35F_cropped.nii": [
         142,
         139,
         54
@@ -74,7 +74,7 @@
         151,
         78
     ],
-    "017-WHF_B35F_cropped1.nii": [
+    "017-WHF_B35F_cropped.nii": [
         133,
         126,
         68
@@ -89,7 +89,7 @@
         131,
         62
     ],
-    "021-MSH_B35F_cropped1.nii": [
+    "021-MSH_B35F_cropped.nii": [
         129,
         164,
         75
@@ -104,7 +104,7 @@
         160,
         68
     ],
-    "024-GRO_B35F_cropped1.nii": [
+    "024-GRO_B35F_cropped.nii": [
         78,
         81,
         57
