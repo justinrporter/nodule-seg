@@ -7,7 +7,7 @@ availiable through ITK.'''
 import sys
 import argparse
 import itk_attach
-
+import os.path
 
 
 def process_command_line(argv):
@@ -19,10 +19,10 @@ def process_command_line(argv):
 
     parser.add_argument("images", nargs="+",
                         help="The image that should be segmented.")
-    parser.add_argument("--connect_iterations", type=int, default=5,
+    parser.add_argument("--connect_iterations", type=int, default=2,
                         help="The number of iterations to run" +
                              " ConfidenceConnectedImageFilter")
-    parser.add_argument('--connect_stddevs', type=float, default=4.0,
+    parser.add_argument('--connect_stddevs', type=float, default=3.0,
                         help="The number of voxel property standard devs " +
                         "to consider as connected.")
     parser.add_argument('--connect_neighborhood', type=int, default=1,
@@ -45,56 +45,84 @@ def process_command_line(argv):
 
     args = parser.parse_args(argv[1:])
 
+    configs = argparse.Namespace()
+
     import json
     with open(args.seeds) as f:
         seeds = json.loads(f.read())
-    args.seeds = seeds
+    configs.seeds = seeds
 
-    return args
+    configs.images = args.images
+    configs.label = args.label
+    configs.path = args.path
+
+    configs.connect = {}
+    configs.connect['neighborhood'] = args.connect_neighborhood
+    configs.connect['stddevs'] = args.connect_stddevs
+    configs.connect['iterations'] = args.connect_iterations
+
+    configs.smooth = {}
+    configs.smooth['iterations'] = args.smooth_iterations
+    configs.smooth['timestep'] = args.smooth_timestep
+
+    configs.gauss = {'sigma': args.sigma}
+
+    return configs
 
 
-def input2output(fname, label):
+def input2output(fname, label, path=None):
     '''Build output filename from input filename.'''
+
     ext = fname[fname.rfind('.'):]
     new_fname = fname.rstrip(ext) + "-" + label + ext
 
+    if path:
+        new_fname = path + os.path.basename(new_fname)
+
     return new_fname
+
+
+def segment(in_image, out_image, smooth_param, gauss_param, connect_param):
+    '''Perform the segmentation aniso + gauss + confidence connected.'''
+    pipe = itk_attach.FileReader(in_image)
+
+    pipe = itk_attach.AnisoDiffStage(pipe,
+                                     smooth_param['timestep'],
+                                     smooth_param['iterations'])
+
+    pipe = itk_attach.GradMagRecGaussStage(pipe, gauss_param['sigma'])
+
+    pipe = itk_attach.ConfidenceConnectStage(pipe,
+                                             connect_param['seeds'],
+                                             connect_param['iterations'],
+                                             connect_param['stddevs'],
+                                             connect_param['neighborhood'])
+
+    pipe = itk_attach.FileWriter(pipe, out_image)
+
+    pipe.execute()
 
 
 def main(argv=None):
     '''Run the driver script for this module. This code only runs if we're
     being run as a script. Otherwise, it's silent and just exposes methods.'''
-    import os.path
     import datetime
 
-    args = process_command_line(argv)
+    configs = process_command_line(argv)
 
-    print "Segmenting", len(args.images), "images"
+    print "Segmenting", len(configs.images), "images"
 
-    for fname in args.images:
+    for fname in configs.images:
         basefname = os.path.basename(fname)
         sys.stdout.write("Segmenting " + basefname + "... ")
         sys.stdout.flush()
         start = datetime.datetime.now()
 
-        pipe = itk_attach.FileReader(fname)
+        configs.connect['seeds'] = configs.seeds[basefname]
 
-        pipe = itk_attach.AnisoDiffStage(pipe,
-                                         args.smooth_timestep,
-                                         args.smooth_iterations)
+        segment(fname, input2output(fname, configs.label, configs.path),
+                configs.smooth, configs.gauss, configs.connect)
 
-        pipe = itk_attach.GradMagRecGaussStage(pipe, args.sigma)
-
-        pipe = itk_attach.ConfidenceConnectStage(pipe,
-                                                 args.seeds[basefname],
-                                                 args.connect_iterations,
-                                                 args.connect_stddevs,
-                                                 args.connect_neighborhood)
-
-        pipe = itk_attach.FileWriter(pipe, input2output(fname, args.label))
-
-        # run the pipeline
-        pipe.execute()
         print "took", datetime.datetime.now() - start
 
     return 1
