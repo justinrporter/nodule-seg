@@ -29,6 +29,7 @@ def main(argv=None):
 
     import medpy.io
     import numpy as np
+    import os.path
 
     print "xor,", "auto - manual"
 
@@ -38,7 +39,7 @@ def main(argv=None):
         xor = np.sum(np.logical_xor(auto, manual))/float(auto.size)
         summed_diff = np.sum(auto - manual)/float(auto.size)
 
-        print (float(xor), float(summed_diff))
+        print os.path.basename(fauto), float(xor), float(summed_diff)
 
     return 1
 
