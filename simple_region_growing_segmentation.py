@@ -8,9 +8,7 @@ import sys
 import argparse
 import os.path
 
-
-global intermediate_images  # pylint: disable=invalid-name,W0604
-intermediate_images = False  # pylint: disable=invalid-name
+from segstrats import aniso_gauss_confidence as segment
 
 
 def process_command_line(argv):
@@ -62,7 +60,7 @@ def process_command_line(argv):
     configs.label = args.label
     configs.path = args.path
 
-    intermediate_images = args.intermediate_images
+    configs.intermediate_images = args.intermediate_images
 
     configs.connect = {}
     configs.connect['neighborhood'] = args.connect_neighborhood
@@ -88,33 +86,6 @@ def input2output(fname, label, path=None):
         new_fname = path + os.path.basename(new_fname)
 
     return new_fname
-
-
-def segment(in_image, out_image, smooth_param, gauss_param, connect_param):
-    '''Perform the segmentation aniso + gauss + confidence connected.'''
-    import itk_attach
-
-    pipe = itk_attach.FileReader(in_image)
-
-    pipe = itk_attach.AnisoDiffStage(pipe,
-                                     smooth_param['timestep'],
-                                     smooth_param['iterations'])
-    if intermediate_images:
-        itk_attach.FileWriter(pipe, "aniso.nii").execute()
-
-    pipe = itk_attach.GradMagRecGaussStage(pipe, gauss_param['sigma'])
-    if intermediate_images:
-        itk_attach.FileWriter(pipe, "gauss.nii").execute()
-
-    pipe = itk_attach.ConfidenceConnectStage(pipe,
-                                             connect_param['seeds'],
-                                             connect_param['iterations'],
-                                             connect_param['stddevs'],
-                                             connect_param['neighborhood'])
-
-    pipe = itk_attach.FileWriter(pipe, out_image)
-
-    pipe.execute()
 
 
 def main(argv=None):
@@ -143,7 +114,9 @@ def main(argv=None):
 
         try:
             segment(fname, input2output(fname, configs.label, configs.path),
-                    configs.smooth, configs.gauss, configs.connect)
+                    smooth=configs.smooth, gauss=configs.gauss,
+                    connect=configs.connect,
+                    intermediate_images=configs.intermediate_images)
         except Exception:  # pylint: disable=W0703
             skipped.append(fname)
             continue
