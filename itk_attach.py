@@ -90,7 +90,7 @@ class PipeStage(object):
 class CurvatureFlowStage(PipeStage):
     '''An itk PipeStage that implementsv CurvatureFlowImageFilter.'''
 
-    def __init__(self, previous_stage, iterations, timestep):
+    def __init__(self, previous_stage, timestep, iterations):
         # pylint: disable=no-name-in-module,no-member
         from itk import CurvatureFlowImageFilter
 
