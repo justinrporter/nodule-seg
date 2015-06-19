@@ -2,8 +2,8 @@
 
 
 def aniso_gauss_confidence(in_image, out_image, **kwargs):
-    '''Perform a segmentation aniso + gauss + confidence connected
-    segmentation strategy.'''
+    '''Perform an aniso + gauss + confidence connected segmentation strategy.
+    '''
 
     import itk_attach
 
@@ -29,6 +29,33 @@ def aniso_gauss_confidence(in_image, out_image, **kwargs):
                                              connect_param['iterations'],
                                              connect_param['stddevs'],
                                              connect_param['neighborhood'])
+
+    pipe = itk_attach.FileWriter(pipe, out_image)
+
+    pipe.execute()
+
+
+def flow_confidence(in_image, out_image, **kwargs):
+    '''Perform a curvatureflow + confidence connected segmentation strategy.'''
+
+    import itk_attach
+
+    smooth = kwargs['smooth']
+    connect = kwargs['connect']
+    intermed_img = kwargs.get('intermediate_images', False)
+
+    pipe = itk_attach.FileReader(in_image)
+
+    pipe = itk_attach.CurvatureFlowStage(pipe, smooth['timestep'],
+                                         smooth['iterations'])
+
+    if intermed_img:
+        itk_attach.FileWriter(pipe, 'curvature.nii')
+
+    pipe = itk_attach.ConfidenceConnectStage(pipe, connect['seeds'],
+                                             connect['iterations'],
+                                             connect['stddevs'],
+                                             connect['neighborhood'])
 
     pipe = itk_attach.FileWriter(pipe, out_image)
 
