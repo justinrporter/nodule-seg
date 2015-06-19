@@ -46,6 +46,8 @@ def process_command_line(argv):
     parser.add_argument('--intermediate_images', action="store_true",
                         default=False, help="Produce pipeline intermediate " +
                         "images (i.e. after each filter stage.")
+    parser.add_argument('--no_overwrite', default=False, action="store_true",
+                        help="Do not overwrite existing files.")
 
     args = parser.parse_args(argv[1:])
 
@@ -59,6 +61,7 @@ def process_command_line(argv):
     configs.images = args.images
     configs.label = args.label
     configs.path = args.path
+    configs.no_overwrite = args.no_overwrite
 
     configs.intermediate_images = args.intermediate_images
 
@@ -114,8 +117,14 @@ def main(argv=None):
             continue
 
         try:
+            outname = input2output(fname, configs.label, configs.path)
+
+            if os.path.isfile(outname) and configs.no_overwrite:
+                print "outfile exists, skipping"
+                continue
+
             aniso_gauss_confidence(
-                fname, input2output(fname, configs.label, configs.path),
+                fname, outname,
                 smooth=configs.smooth,
                 gauss=configs.gauss,
                 connect=configs.connect,
