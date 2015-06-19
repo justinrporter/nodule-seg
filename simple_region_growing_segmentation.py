@@ -8,7 +8,7 @@ import sys
 import argparse
 import os.path
 
-from segstrats import aniso_gauss_confidence
+from segstrats import flow_confidence
 
 
 def process_command_line(argv):
@@ -123,7 +123,7 @@ def main(argv=None):
                 print "outfile exists, skipping"
                 continue
 
-            aniso_gauss_confidence(
+            flow_confidence(
                 fname, outname,
                 smooth=configs.smooth,
                 gauss=configs.gauss,
