@@ -83,7 +83,7 @@ def input2output(fname, label, path=None):
     new_fname = fname.rstrip(ext) + "-" + label + ext
 
     if path:
-        new_fname = path + os.path.basename(new_fname)
+        new_fname = os.path.join(path, os.path.basename(new_fname))
 
     return new_fname
 
