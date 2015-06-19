@@ -88,17 +88,14 @@ class PipeStage(object):
         return self.instance.GetOutput()
 
 
-class StatsStage(PipeStage):
-    '''An itk PipeStage that implements StatisticsImageFilter.'''
+class BinaryFillholeStage(PipeStage):
+    '''An itk PipeStage that implements BinaryFillholeImageFilter.'''
 
     def __init__(self, previous_stage):
-        # pylint: disable=no-name-in-module
-        from itk import StatisticsImageFilter
+        # pylint: disable=no-name-in-module,no-member
+        from itk import BinaryFillholeImageFilter as fillhole
 
-        template = StatisticsImageFilter
-        super(StatsStage, self).__init__(template, previous_stage)
-
-        self.stats = None
+        super(BinaryFillholeStage, self).__init__(fillhole, previous_stage)
 
     def _instantiate(self, template):
         return template[self.in_type()].New()

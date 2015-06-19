@@ -57,6 +57,8 @@ def flow_confidence(in_image, out_image, **kwargs):
                                              connect['stddevs'],
                                              connect['neighborhood'])
 
+    pipe = itk_attach.BinaryFillholeStage(pipe)
+
     pipe = itk_attach.FileWriter(pipe, out_image)
 
     pipe.execute()
