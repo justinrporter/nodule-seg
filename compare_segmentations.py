@@ -36,10 +36,23 @@ def main(argv=None):
     for (fauto, fmanual) in config.files:
         (auto, manual) = (medpy.io.load(fauto)[0], medpy.io.load(fmanual)[0])
 
-        xor = np.sum(np.logical_xor(auto, manual))/float(auto.size)
-        summed_diff = np.sum(auto - manual)/float(auto.size)
+        size = float(auto.size)
 
-        print os.path.basename(fauto), float(xor), float(summed_diff)
+        try:
+            xor = np.count_nonzero(np.logical_xor(auto, manual))
+            size_diff = np.count_nonzero(auto) - np.count_nonzero(manual)
+
+            norm_xor = xor / size
+            norm_diff = size_diff / size
+
+        except ValueError:
+            sys.stderr.write(" ".join(["Skipping", fauto, "since it differs",
+                                       "in size from the manual image",
+                                       fmanual, "(", str(auto.size), "vs",
+                                       str(manual.size), ")"])+"\n")
+            continue
+
+        print os.path.basename(fauto), float(norm_xor), float(norm_diff)
 
     return 1
 
