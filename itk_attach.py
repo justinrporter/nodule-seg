@@ -29,10 +29,20 @@ def extract_image_type(img_type):
 class PipeStage(object):
     '''A stub itk pipeline stage, to be inherited from by other classes.'''
 
-    def __init__(self, template, previous_stage):
+    def __init__(self, template, previous_stage, params=None):
         self.prev = previous_stage
         self.template = template
-        self.params = {}
+        self.instance = self._instantiate(template)
+
+        if params is not None:
+            try:
+                for param in params:
+                    set_method = getattr(self.instance, param)
+                    set_method(params[param])
+            except TypeError:
+                print "Failed to set the parameter", param, "on", \
+                      type(self.instance)
+                raise
 
     def in_type(self):
         '''Get the itk type that is input for this pipe stage. Default
@@ -46,11 +56,10 @@ class PipeStage(object):
         '''
         return self.in_type()
 
-    def instantiate(self):
+    def _instantiate(self, template):
         '''Instantiate an instance of the wrapped class template for use.
         Useful to override in cases where there is unusual templating.'''
-        instance = self.template[self.in_type(), self.out_type()].New()
-        instance.SetDebug(True)
+        instance = template[self.in_type(), self.out_type()].New()
 
         return instance
 
@@ -60,46 +69,55 @@ class PipeStage(object):
         output.'''
         pass
 
-    def _bind_input(self, instance):
+    def _bind_input(self):
         '''Bind the input of the previous pipeline stage to an instance of the
         class template.'''
-        instance.SetInput(self.prev.execute())
+        self.instance.SetInput(self.prev.execute())
 
     def execute(self):
         '''Execute this and all previous stages recursively to build output
         from this pipeline stage. Returns the result of a GetOutput call to
         the wrapped itk object.'''
-        instance = self.instantiate()
 
-        try:
-            for param in self.params:
-                set_method = getattr(instance, param)
-                set_method(self.params[param])
-        except TypeError:
-            print "Failed to set the parameter", param, "on", type(instance)
-            raise
+        # this can't happen in the constructor since it requires a call to
+        # execute()
+        self._bind_input()
 
-        self._bind_input(instance)
-        instance.Update()
+        self.instance.Update()
 
-        self._finished(instance)
+        return self.instance.GetOutput()
 
-        return instance.GetOutput()
+
+class StatsStage(PipeStage):
+    '''An itk PipeStage that implements StatisticsImageFilter.'''
+
+    def __init__(self, previous_stage):
+        # pylint: disable=no-name-in-module
+        from itk import StatisticsImageFilter
+
+        template = StatisticsImageFilter
+        super(StatsStage, self).__init__(template, previous_stage)
+
+        self.stats = None
+
+    def _instantiate(self, template):
+        return template[self.in_type()].New()
 
 
 class CurvatureFlowStage(PipeStage):
-    '''An itk PipeStage that implementsv CurvatureFlowImageFilter.'''
+    '''An itk PipeStage that implements CurvatureFlowImageFilter.'''
 
     def __init__(self, previous_stage, timestep, iterations):
         # pylint: disable=no-name-in-module,no-member
         from itk import CurvatureFlowImageFilter
 
+        params = {"SetNumberOfIterations": iterations,
+                  "SetTimeStep": timestep}
+
         template = CurvatureFlowImageFilter
         super(CurvatureFlowStage, self).__init__(template,
-                                                 previous_stage)
-
-        self.params = {"SetNumberOfIterations": iterations,
-                       "SetTimeStep": timestep}
+                                                 previous_stage,
+                                                 params)
 
 
 class ConfidenceConnectStage(PipeStage):
@@ -113,14 +131,15 @@ class ConfidenceConnectStage(PipeStage):
         # pylint: disable=no-name-in-module
         from itk import ConfidenceConnectedImageFilter
 
+        params = {"AddSeed": seed,
+                  "SetMultiplier": stddevs,
+                  "SetNumberOfIterations": iterations,
+                  "SetInitialNeighborhoodRadius": neighborhood}
+
         template = ConfidenceConnectedImageFilter
         super(ConfidenceConnectStage, self).__init__(template,
-                                                     previous_stage)
-
-        self.params = {"AddSeed": seed,
-                       "SetMultiplier": stddevs,
-                       "SetNumberOfIterations": iterations,
-                       "SetInitialNeighborhoodRadius": neighborhood}
+                                                     previous_stage,
+                                                     params)
 
     def out_type(self):
         '''ConfidenceConnectedImageFilter is only able to output as unsigned
@@ -201,11 +220,11 @@ class AnisoDiffStage(PipeStage):
         # pylint: disable=no-name-in-module
         from itk import CurvatureAnisotropicDiffusionImageFilter as templ
 
-        super(AnisoDiffStage, self).__init__(templ, previous_stage)
+        params = {"SetTimeStep": timestep,
+                  "SetNumberOfIterations": iterations,
+                  "SetConductanceParameter": conductance}
 
-        self.params = {"SetTimeStep": timestep,
-                       "SetNumberOfIterations": iterations,
-                       "SetConductanceParameter": conductance}
+        super(AnisoDiffStage, self).__init__(templ, previous_stage, params)
 
 
 class GradMagRecGaussStage(PipeStage):
@@ -216,9 +235,10 @@ class GradMagRecGaussStage(PipeStage):
         # pylint: disable=no-name-in-module
         from itk import GradientMagnitudeRecursiveGaussianImageFilter as templ
 
-        super(GradMagRecGaussStage, self).__init__(templ, previous_stage)
+        params = {"SetSigma": sigma}
 
-        self.params = {"SetSigma": sigma}
+        super(GradMagRecGaussStage, self).__init__(templ, previous_stage,
+                                                   params)
 
 
 class SigmoidStage(PipeStage):
@@ -230,13 +250,13 @@ class SigmoidStage(PipeStage):
         # pylint: disable=no-name-in-module,no-member
         from itk import SigmoidImageFilter
 
-        template = SigmoidImageFilter
-        super(SigmoidStage, self).__init__(template, previous_stage)
+        params = {"SetOutputMinimum": out_min,
+                  "SetOutputMaximum": out_max,
+                  "SetAlpha": alpha,
+                  "SetBeta": beta}
 
-        self.params = {"SetOutputMinimum": out_min,
-                       "SetOutputMaximum": out_max,
-                       "SetAlpha": alpha,
-                       "SetBeta": beta}
+        template = SigmoidImageFilter
+        super(SigmoidStage, self).__init__(template, previous_stage, params)
 
 
 class FastMarchingStage(PipeStage):
@@ -251,25 +271,26 @@ class FastMarchingStage(PipeStage):
         # pylint: disable=no-name-in-module,no-member
         from itk import FastMarchingImageFilter
 
-        template = FastMarchingImageFilter
-        super(FastMarchingStage, self).__init__(template, previous_stage)
-
-        self.params = {"SetTrialPoints": self.build_seeds(seeds, seed_value),
-                       "SetStoppingValue": stopping_value,
-                       }
+        params = {"SetTrialPoints": self.build_seeds(seeds, seed_value),
+                  "SetStoppingValue": stopping_value,
+                  }
 
         self.imageless = imageless
         if imageless:
-            self.params["SetSpeedConstant"] = 1.0
+            params["SetSpeedConstant"] = 1.0
 
-    def _bind_input(self, instance):
+        template = FastMarchingImageFilter
+        super(FastMarchingStage, self).__init__(template, previous_stage,
+                                                params)
+
+    def _bind_input(self):
         output = self.prev.execute()
 
-        instance.SetOutputSize(output.GetBufferedRegion().GetSize())
-        instance.SetOutputSpacing(output.GetSpacing())
+        self.instance.SetOutputSize(output.GetBufferedRegion().GetSize())
+        self.instance.SetOutputSpacing(output.GetSpacing())
 
         if not self.imageless:
-            instance.SetInput(output)
+            self.instance.SetInput(output)
 
     def build_seeds(self, seeds, seed_value):
         '''Construct an itk.VectorContainer of itk.LevelSetNode object from
@@ -296,24 +317,19 @@ class LevelSetFilterStage(PipeStage):
     '''A base class for PipeStages wrapping ImageFilters that have two inputs:
     a usual input and a 'feature input'.'''
 
-    def __init__(self, templ, previous_stage, feature_stage):
-        super(LevelSetFilterStage, self).__init__(templ, previous_stage)
+    def __init__(self, templ, previous_stage, feature_stage, params):
+        super(LevelSetFilterStage, self).__init__(templ, previous_stage,
+                                                  params)
         self.prev_feature = feature_stage
 
-    def _bind_input(self, instance):
-        super(LevelSetFilterStage, self)._bind_input(instance)
-
-        oput = self.prev_feature.execute()
-        instance.SetFeatureImage(oput)
-        instance.SetInput2(oput)
-
-        instance.SetDebug(True)
-        instance.SetGlobalWarningDisplay(True)
+    def _bind_input(self):
+        super(LevelSetFilterStage, self)._bind_input()
+        self.instance.SetFeatureImage(self.prev_feature.execute())
 
     def _finished(self, instance):
         print instance.GetElapsedIterations()
 
-    def instantiate(self):
+    def _instantiate(self, template):
         # LevelSetImageFilters have an unusual 3-argument
         # templating, which is problematic for PipeStage's dynamic
         # instantiation protocol. Appropriate implementation here.
@@ -323,7 +339,7 @@ class LevelSetFilterStage(PipeStage):
 
         for avail_templ in self.template:
             if avail_templ[0] == img_type and avail_templ[1] == feature_type:
-                return self.template[avail_templ].New()
+                return template[avail_templ].New()
 
         s = " ".join(["Could not instantiate", str(self.template), "because ",
                       "no valid template combination of", str(img_type), "and",
@@ -340,17 +356,17 @@ class ShapeDetectionStage(LevelSetFilterStage):
         # pylint: disable=no-name-in-module,no-member
         from itk import ShapeDetectionLevelSetImageFilter as Shape
 
-        super(ShapeDetectionStage, self).__init__(Shape, previous_stage,
-                                                  feature_stage)
-
         (propagation, curvature) = (1.0, prop_curve_ratio)
 
-        self.params = {"SetPropagationScaling": -propagation,
-                       "SetCurvatureScaling": curvature,
-                       # "SetMaximumRMSError": 2,
-                       # "SetNumberOfIterations": 800,
-                       "SetIsoSurfaceValue": -1,
-                       }
+        params = {"SetPropagationScaling": -propagation,
+                  "SetCurvatureScaling": curvature,
+                  # "SetMaximumRMSError": 2,
+                  # "SetNumberOfIterations": 800,
+                  "SetIsoSurfaceValue": -1,
+                  }
+
+        super(ShapeDetectionStage, self).__init__(Shape, previous_stage,
+                                                  feature_stage, params)
 
 
 class GeoContourLSetStage(LevelSetFilterStage):
@@ -361,14 +377,14 @@ class GeoContourLSetStage(LevelSetFilterStage):
         # pylint: disable=no-name-in-module,no-member
         from itk import GeodesicActiveContourLevelSetImageFilter as Geodesic
 
-        super(GeoContourLSetStage, self).__init__(Geodesic, prev_stage,
-                                                  feature_stage)
+        params = {"SetPropagationScaling": scaling,
+                  "SetNumberOfIterations": iterations,
+                  "SetCurvatureScaling": 1.0,
+                  "SetAdvectionScaling": 1.0,
+                  "SetMaximumRMSError": 0.02}
 
-        self.params = {"SetPropagationScaling": scaling,
-                       "SetNumberOfIterations": iterations,
-                       "SetCurvatureScaling": 1.0,
-                       "SetAdvectionScaling": 1.0,
-                       "SetMaximumRMSError": 0.02}
+        super(GeoContourLSetStage, self).__init__(Geodesic, prev_stage,
+                                                  feature_stage, params)
 
 
 class BinaryThreshStage(PipeStage):
@@ -379,14 +395,19 @@ class BinaryThreshStage(PipeStage):
         from itk import BinaryThresholdImageFilter as BinThresh
         from itk import NumericTraits
 
-        super(BinaryThreshStage, self).__init__(BinThresh, previous_stage)
+        params = {'SetLowerThreshold': threshold[0],
+                  'SetUpperThreshold': threshold[1]}
 
+        super(BinaryThreshStage, self).__init__(BinThresh, previous_stage,
+                                                params)
+
+        # the superclass configures the in_type and out_type stuff to work
+        # so we have to wait until after the superclass constructor to access
+        # the previous PipeStage in a nice way.
         px_type = extract_image_type(self.out_type())[0]
 
-        self.params['SetLowerThreshold'] = threshold[0]
-        self.params['SetUpperThreshold'] = threshold[1]
-        self.params['SetOutsideValue'] = NumericTraits[px_type].min()
-        self.params['SetInsideValue'] = NumericTraits[px_type].max()
+        self.instance.SetOutsideValue(NumericTraits[px_type].min())
+        self.instance.SetInsideValue(NumericTraits[px_type].max())
 
     def out_type(self):
         preferred = IMG_UC()

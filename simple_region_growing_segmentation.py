@@ -8,7 +8,7 @@ import sys
 import argparse
 import os.path
 
-from segstrats import aniso_gauss_confidence as segment
+from segstrats import aniso_gauss_confidence
 
 
 def process_command_line(argv):
@@ -23,7 +23,7 @@ def process_command_line(argv):
     parser.add_argument("--connect_iterations", type=int, default=2,
                         help="The number of iterations to run" +
                              " ConfidenceConnectedImageFilter")
-    parser.add_argument('--connect_stddevs', type=float, default=3.0,
+    parser.add_argument('--connect_stddevs', type=float, default=2.0,
                         help="The number of voxel property standard devs " +
                         "to consider as connected.")
     parser.add_argument('--connect_neighborhood', type=int, default=1,
@@ -93,6 +93,7 @@ def main(argv=None):
     being run as a script. Otherwise, it's silent and just exposes methods.'''
     import datetime
 
+    allstart = datetime.datetime.now()
     configs = process_command_line(argv)
 
     print "Segmenting", len(configs.images), "images"
@@ -113,13 +114,19 @@ def main(argv=None):
             continue
 
         try:
-            segment(fname, input2output(fname, configs.label, configs.path),
-                    smooth=configs.smooth, gauss=configs.gauss,
-                    connect=configs.connect,
-                    intermediate_images=configs.intermediate_images)
+            aniso_gauss_confidence(
+                fname, input2output(fname, configs.label, configs.path),
+                smooth=configs.smooth,
+                gauss=configs.gauss,
+                connect=configs.connect,
+                intermediate_images=configs.intermediate_images
+                )
         except Exception:  # pylint: disable=W0703
-            skipped.append(fname)
-            continue
+            if len(configs.images) > 1:
+                skipped.append(fname)
+                continue
+            else:
+                raise
 
         times.append(datetime.datetime.now() - start)
         print "took", times[-1]
@@ -127,6 +134,7 @@ def main(argv=None):
     if len(times) > 0:
         print "min/avg/max", min(times), \
               sum(times, datetime.timedelta())/len(times), max(times)
+        print "total time:", datetime.datetime.now() - allstart
     print "skipped", len(skipped), "files:"
     print "\n".join(skipped)
 
