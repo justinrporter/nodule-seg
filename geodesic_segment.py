@@ -3,7 +3,6 @@ algorithm.'''
 
 import sys
 import argparse
-import itk_attach
 
 
 def process_command_line(argv):
@@ -20,13 +19,13 @@ def process_command_line(argv):
                         " to where to begin segmentation.")
     parser.add_argument('-o', '--output', default=None,
                         help="The segmented file to output")
-    parser.add_argument('--sigma', default=1.0, type=float,
+    parser.add_argument('--sigma', default=0.05, type=float,
                         help="The stddev in units of image spacing for the " +
                              "GradientMagnitudeRecursiveGaussianImageFilter.")
-    parser.add_argument('--alpha', default=-0.5, type=float,
-                        help="Alpha ('A') parameter in sigmoid filter. Obeys" +
-                        " the expression exp((-x+B)/A). Gain.")
-    parser.add_argument('--beta', default=10, type=float,
+    parser.add_argument('--alpha', default=-15, type=float,
+                        help="Alpha ('A') parameter in sigmoid filter.  " +
+                        "Transition width.")
+    parser.add_argument('--beta', default=150, type=float,
                         help="Beta ('B') parameter in sigmoid filter. Obeys" +
                         " the expression exp((-x+B)/A). Zero adjustment.")
     parser.add_argument('--propagation_scaling', default=5.0, type=float,
@@ -35,7 +34,7 @@ def process_command_line(argv):
     parser.add_argument('--geodesic_iterations', default=10, type=int,
                         help="The number of iterations by the " +
                         "GeodesicActiveContourLevelSetImageFilter")
-    parser.add_argument('--seed_distance', default=5, type=int,
+    parser.add_argument('--seed_distance', default=10, type=int,
                         help="The expected distance from the seed to the" +
                         "first level set.")
 
@@ -57,6 +56,8 @@ def main(argv=None):
     being run as a script. Otherwise, it's silent and just exposes methods.'''
 
     args = process_command_line(argv)
+
+    import itk_attach
 
     pipe = itk_attach.FileReader(args.image)
     aniso = itk_attach.AnisoDiffStage(pipe)

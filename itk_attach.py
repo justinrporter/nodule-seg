@@ -292,28 +292,32 @@ class FastMarchingStage(PipeStage):
         return seed_vect
 
 
-class GeoContourLSetStage(PipeStage):
-    '''An itk PipeStage that implements a
-    GeodesicActiveContourLevelSetImageFilter in the pipestage framework.'''
+class LevelSetFilterStage(PipeStage):
+    '''A base class for PipeStages wrapping ImageFilters that have two inputs:
+    a usual input and a 'feature input'.'''
 
-    def __init__(self, previous_stage, feature_stage, scaling, iterations):
-        # pylint: disable=no-name-in-module,no-member
-        from itk import GeodesicActiveContourLevelSetImageFilter as Geodesic
-
-        super(GeoContourLSetStage, self).__init__(Geodesic, previous_stage)
+    def __init__(self, templ, previous_stage, feature_stage):
+        super(LevelSetFilterStage, self).__init__(templ, previous_stage)
         self.prev_feature = feature_stage
 
-        self.params = {"SetPropagationScaling": scaling,
-                       "SetNumberOfIterations": iterations,
-                       "SetCurvatureScaling": 1.0,
-                       "SetAdvectionScaling": 1.0,
-                       "SetMaximumRMSError": 0.02}
-
     def _bind_input(self, instance):
-        super(GeoContourLSetStage, self)._bind_input(instance)
-        instance.SetFeatureImage(self.prev_feature.execute())
+        super(LevelSetFilterStage, self)._bind_input(instance)
+
+        oput = self.prev_feature.execute()
+        instance.SetFeatureImage(oput)
+        instance.SetInput2(oput)
+
+        instance.SetDebug(True)
+        instance.SetGlobalWarningDisplay(True)
+
+    def _finished(self, instance):
+        print instance.GetElapsedIterations()
 
     def instantiate(self):
+        # LevelSetImageFilters have an unusual 3-argument
+        # templating, which is problematic for PipeStage's dynamic
+        # instantiation protocol. Appropriate implementation here.
+
         img_type = self.in_type()
         feature_type = self.prev_feature.out_type()
 
