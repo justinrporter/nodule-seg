@@ -41,7 +41,7 @@ def process_command_line(argv):
                              "GradientMagnitudeRecursiveGaussianImageFilter.")
     parser.add_argument('-p', '--path', default=None,
                         help="The segmented file to output")
-    parser.add_argument('--label', default="autolabel",
+    parser.add_argument('--label', default="confseg",
                         help="The label to add to each file.")
     parser.add_argument('--intermediate_images', action="store_true",
                         default=False, help="Produce pipeline intermediate " +
