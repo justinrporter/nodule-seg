@@ -36,7 +36,7 @@ def main(argv=None):
     for (fauto, fmanual) in config.files:
         (auto, manual) = (medpy.io.load(fauto)[0], medpy.io.load(fmanual)[0])
 
-        size = float(auto.size)
+        size = float(np.count_nonzero(manual))
 
         try:
             xor = np.count_nonzero(np.logical_xor(auto, manual))
