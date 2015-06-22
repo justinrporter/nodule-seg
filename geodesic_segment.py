@@ -3,7 +3,7 @@ algorithm.'''
 
 import sys
 import argparse
-
+from segstrats import aniso_gauss_sigmo_geocontour
 
 def process_command_line(argv):
     '''Parse the command line and do a first-pass on processing them into a
@@ -37,6 +37,9 @@ def process_command_line(argv):
     parser.add_argument('--seed_distance', default=10, type=int,
                         help="The expected distance from the seed to the" +
                         "first level set.")
+    parser.add_argument('--intermediate_images', action="store_true",
+                        default=False, help="Produce pipeline intermediate " +
+                        "images (i.e. after each filter stage.")
 
     args = parser.parse_args(argv[1:])
 
@@ -57,32 +60,15 @@ def main(argv=None):
 
     args = process_command_line(argv)
 
-    import itk_attach
-
-    pipe = itk_attach.FileReader(args.image)
-    aniso = itk_attach.AnisoDiffStage(pipe)
-    gauss = itk_attach.GradMagRecGaussStage(aniso, args.sigma)
-    sigmo = itk_attach.SigmoidStage(gauss, args.alpha, args.beta)
-
-    fastmarch = itk_attach.FastMarchingStage(pipe,
-                                             imageless=True,
-                                             seeds=[args.seed],
-                                             seed_value=args.seed_distance)
-
-    pipe = itk_attach.GeoContourLSetStage(fastmarch, sigmo,
-                                          args.propagation_scaling,
-                                          args.geodesic_iterations)
-
-    itk_attach.FileWriter(aniso, 'out-aniso.nii').execute()
-    itk_attach.FileWriter(gauss, 'out-gauss.nii').execute()
-    itk_attach.FileWriter(sigmo, 'out-sigmo.nii').execute()
-
-    # pipe = itk_attach.BinaryThreshStage(pipe)
-
-    pipe = itk_attach.FileWriter(pipe, args.output)
-
-    # run the pipeline
-    pipe.execute()
+    aniso_gauss_sigmo_geocontour(
+        args.image, args.output,
+        gauss={'sigma': args.sigma},
+        sigmo={'alpha': args.alpha, 'beta': args.beta},
+        seed=[args.seed],
+        seed_distance=args.seed_distance,
+        geodesic={"iterations": args.geodesic_iterations,
+                  "propagation_scaling": args.propagation_scaling},
+        intermediate_images=args.intermediate_images)
 
     return 1
 

@@ -344,9 +344,7 @@ class FastMarchingStage(PipeStage):
         # pylint: disable=no-name-in-module,no-member
         from itk import FastMarchingImageFilter
 
-        params = {"SetTrialPoints": self.build_seeds(seeds, seed_value),
-                  "SetStoppingValue": stopping_value,
-                  }
+        params = {"SetStoppingValue": stopping_value}
 
         self.imageless = imageless
         if imageless:
@@ -355,6 +353,8 @@ class FastMarchingStage(PipeStage):
         template = FastMarchingImageFilter
         super(FastMarchingStage, self).__init__(template, previous_stage,
                                                 params)
+
+        self.instance.SetTrialPoints(self.build_seeds(seeds, seed_value))
 
     def _bind_input(self):
         output = self.prev.execute()
@@ -391,9 +391,10 @@ class LevelSetFilterStage(PipeStage):
     a usual input and a 'feature input'.'''
 
     def __init__(self, templ, previous_stage, feature_stage, params):
+        self.prev_feature = feature_stage
+
         super(LevelSetFilterStage, self).__init__(templ, previous_stage,
                                                   params)
-        self.prev_feature = feature_stage
 
     def _bind_input(self):
         super(LevelSetFilterStage, self)._bind_input()
