@@ -10,11 +10,12 @@ def aniso_gauss_sigmo_geocontour(in_image, out_image, **kwargs):
     gauss = kwargs['gauss']
     sigmo = kwargs['sigmo']
     geodesic = kwargs['geodesic']
+    binary = kwargs.get('binary', {'threshold': (0.1, 1.5)})
 
     pipe = itk_attach.FileReader(in_image)
     aniso = itk_attach.AnisoDiffStage(pipe)
     gauss = itk_attach.GradMagRecGaussStage(aniso, gauss['sigma'])
-    sigmo = itk_attach.SigmoidStage(gauss, sigmo['alpha'], sigmo['beta'])
+    feature = itk_attach.SigmoidStage(gauss, sigmo['alpha'], sigmo['beta'])
 
     fastmarch = itk_attach.FastMarchingStage(
         pipe,
@@ -22,26 +23,26 @@ def aniso_gauss_sigmo_geocontour(in_image, out_image, **kwargs):
         seeds=kwargs['seed'],
         seed_value=kwargs['seed_distance'])
 
-    pipe = itk_attach.GeoContourLSetStage(
+    geo = itk_attach.GeoContourLSetStage(
         fastmarch,
-        sigmo,
+        feature,
         geodesic['propagation_scaling'],
         geodesic['iterations'])
 
     if kwargs.get('intermediate_images', False):
         itk_attach.FileWriter(aniso, 'out-aniso.nii').execute()
         itk_attach.FileWriter(gauss, 'out-gauss.nii').execute()
-        itk_attach.FileWriter(sigmo, 'out-sigmo.nii').execute()
+        itk_attach.FileWriter(feature, 'out-sigmo.nii').execute()
         itk_attach.FileWriter(fastmarch, 'out-march.nii').execute()
 
-        print "Elapsed Iterations:", pipe.instance.GetElapsedIterations()
-
-    # pipe = itk_attach.BinaryThreshStage(pipe)
+    pipe = itk_attach.BinaryThreshStage(geo, binary['threshold'])
 
     pipe = itk_attach.FileWriter(pipe, out_image)
 
     # run the pipeline
     pipe.execute()
+
+    print "Elapsed Iterations:", geo.instance.GetElapsedIterations()
 
 
 def aniso_gauss_confidence(in_image, out_image, **kwargs):
