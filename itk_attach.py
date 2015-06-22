@@ -71,7 +71,8 @@ class PipeStage(object):
 
     def _bind_input(self):
         '''Bind the input of the previous pipeline stage to an instance of the
-        class template.'''
+        class template. Will result in a call to Update() for upstream stages.
+        '''
         self.instance.SetInput(self.prev.execute())
 
     def execute(self):
@@ -88,7 +89,83 @@ class PipeStage(object):
         return self.instance.GetOutput()
 
 
-class BinaryFillholeStage(PipeStage):
+class StatsStage(PipeStage):
+    '''An itk pipestage to get statistics on an imput image.'''
+
+    def __init__(self, previous_stage):
+        # pylint: disable=no-name-in-module,no-member
+        from itk import StatisticsImageFilter as stats
+
+        super(StatsStage, self).__init__(stats, previous_stage)
+
+    def _instantiate(self, template):
+        return template[self.in_type()].New()
+
+    def max(self):
+        '''Get the maximum value of the input pipestage. Induces a call to
+        Update().'''
+        self.execute()
+        return self.instance.GetMaximum()
+
+    def min(self):
+        '''Get the minimum value of the input pipestage. Induces a call to
+        Update().'''
+        self.execute()
+        return self.instance.GetMinimum()
+
+    def stddev(self):
+        '''Get the standard deviation of the input pipestage image. Induces a
+        call to Update().'''
+        self.execute()
+        return self.instance.GetSigma()
+
+    def sum(self):
+        '''Get the sum of the input pipestage's image. Results in a call to
+        Update().'''
+        self.execute()
+        return self.instance.GetSum()
+
+    def mean(self):
+        '''Get the average of the input pipestage's image. Results in a call
+        to Update().'''
+        self.execute()
+        return self.instance.GetMean()
+
+
+class BinaryStage(PipeStage):
+    '''A generic superclass to manage one-templated binary image filters.'''
+
+    def _instantiate(self, template):
+        return template[self.in_type()].New()
+
+    def _bind_input(self):
+        # at the last possible second, determine the appropriate forground
+        # value for the biary image by looking for the maximum value in the
+        # input.
+        stats = StatsStage(self.prev)
+        self.instance.SetForegroundValue(stats.max())
+
+        super(BinaryStage, self)._bind_input()
+
+
+class VotingIterativeBinaryFillholeStage(BinaryStage):
+    '''An itk PipeStage that implements a
+    VotingBinaryIterativeHoleFillingImageFilter'''
+
+    def __init__(self, previous_stage, **kwargs):
+        # pylint: disable=no-name-in-module,no-member
+        from itk import VotingBinaryIterativeHoleFillingImageFilter as fillhole
+
+        super(VotingIterativeBinaryFillholeStage, self).__init__(
+            fillhole,
+            previous_stage)
+
+        self.instance.SetMaximumNumberOfIterations(
+            kwargs.get('iterations', 10))
+        self.instance.SetMajorityThreshold(kwargs.get('threshold', 3))
+
+
+class BinaryFillholeStage(BinaryStage):
     '''An itk PipeStage that implements BinaryFillholeImageFilter.'''
 
     def __init__(self, previous_stage):
@@ -97,8 +174,7 @@ class BinaryFillholeStage(PipeStage):
 
         super(BinaryFillholeStage, self).__init__(fillhole, previous_stage)
 
-    def _instantiate(self, template):
-        return template[self.in_type()].New()
+        self.instance.SetForegroundValue(1)
 
 
 class CurvatureFlowStage(PipeStage):
@@ -118,9 +194,9 @@ class CurvatureFlowStage(PipeStage):
 
 
 class ConfidenceConnectStage(PipeStage):
-    '''An itk PipeStage that implements
-    ConfidenceConnectedImageFilter. Default values for parameters
-    drawn from ITKExamples SegmentWithGeodesicActiveContourLevelSet.'''
+    '''An itk PipeStage that implements ConfidenceConnectedImageFilter.
+    Default values for parameters drawn from ITKExamples
+    SegmentWithGeodesicActiveContourLevelSet.'''
 
     # pylint: disable=too-many-arguments
     def __init__(self, previous_stage, seed, iterations=5, stddevs=3.0,

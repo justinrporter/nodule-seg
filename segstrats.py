@@ -50,12 +50,25 @@ def flow_confidence(in_image, out_image, **kwargs):
                                          smooth['iterations'])
 
     if intermed_img:
-        itk_attach.FileWriter(pipe, 'curvature.nii')
+        itk_attach.FileWriter(pipe, 'curvature.nii').execute()
 
     pipe = itk_attach.ConfidenceConnectStage(pipe, connect['seeds'],
                                              connect['iterations'],
                                              connect['stddevs'],
                                              connect['neighborhood'])
+
+    if intermed_img:
+        itk_attach.FileWriter(pipe, "confidence.nii").execute()
+
+    binary = kwargs.get('binary', None)
+    if binary:
+        pipe = itk_attach.VotingIterativeBinaryFillholeStage(
+            pipe,
+            binary['threshold'],
+            binary['iterations'])
+
+        if intermed_img:
+            itk_attach.FileWriter(pipe, "binvote.nii").execute()
 
     pipe = itk_attach.BinaryFillholeStage(pipe)
 
