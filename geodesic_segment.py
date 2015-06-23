@@ -29,7 +29,10 @@ def process_command_line(argv):
     parser.add_argument('--beta', default=150, type=float,
                         help="Beta ('B') parameter in sigmoid filter. Obeys" +
                         " the expression exp((-x+B)/A). Zero adjustment.")
-    parser.add_argument('--propagation_scaling', default=100.0, type=float,
+    parser.add_argument('--propagation_scaling', default=7.0, type=float,
+                        help="The weight on propagation force in level set " +
+                        "segmentation.")
+    parser.add_argument('--curvature_scaling', default=1.0, type=float,
                         help="The weight on propagation force in level set " +
                         "segmentation.")
     parser.add_argument('--geodesic_iterations', default=300, type=int,
@@ -91,15 +94,18 @@ def main(argv=None):
         try:
             outname = input2output(fname, "geoseg", args.path)
 
-            aniso_gauss_sigmo_geocontour(
+            res = aniso_gauss_sigmo_geocontour(
                 fname, outname,
                 gauss={'sigma': args.sigma},
                 sigmo={'alpha': args.alpha, 'beta': args.beta},
                 seed=[seed],
                 seed_distance=args.seed_distance,
                 geodesic={"iterations": args.geodesic_iterations,
-                          "propagation_scaling": args.propagation_scaling},
+                          "propagation_scaling": args.propagation_scaling,
+                          "curvature_scaling": args.curvature_scaling},
                 intermediate_images=args.intermediate_images)
+
+            sys.stdout.write(str(res))
 
         except Exception:  # pylint: disable=W0703
             if len(args.images) > 1:

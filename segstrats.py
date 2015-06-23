@@ -26,8 +26,9 @@ def aniso_gauss_sigmo_geocontour(in_image, out_image, **kwargs):
     geo = itk_attach.GeoContourLSetStage(
         fastmarch,
         feature,
-        geodesic['propagation_scaling'],
-        geodesic['iterations'])
+        propagation_scaling=geodesic['propagation_scaling'],
+        curvature_scaling=geodesic['curvature_scaling'],
+        iterations=geodesic['iterations'])
 
     if kwargs.get('intermediate_images', False):
         itk_attach.FileWriter(aniso, 'out-aniso.nii').execute()
@@ -42,7 +43,7 @@ def aniso_gauss_sigmo_geocontour(in_image, out_image, **kwargs):
     # run the pipeline
     pipe.execute()
 
-    print "Elapsed Iterations:", geo.instance.GetElapsedIterations()
+    return {'geodesic_iterations': geo.instance.GetElapsedIterations()}
 
 
 def aniso_gauss_confidence(in_image, out_image, **kwargs):

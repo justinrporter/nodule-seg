@@ -447,15 +447,14 @@ class GeoContourLSetStage(LevelSetFilterStage):
     '''An itk PipeStage that implements a
     GeodesicActiveContourLevelSetImageFilter in the pipestage framework.'''
 
-    def __init__(self, prev_stage, feature_stage, scaling, iterations):
+    def __init__(self, prev_stage, feature_stage, **kwargs):
         # pylint: disable=no-name-in-module,no-member
         from itk import GeodesicActiveContourLevelSetImageFilter as Geodesic
 
-        params = {"SetPropagationScaling": scaling,
-                  "SetNumberOfIterations": iterations,
-                  "SetCurvatureScaling": 1.0,
-                  "SetAdvectionScaling": 1.0,
-                  "SetMaximumRMSError": 0.02}
+        params = {"SetPropagationScaling": kwargs['propagation_scaling'],
+                  "SetNumberOfIterations": kwargs['iterations'],
+                  "SetCurvatureScaling": kwargs.get('curvature_scaling', 1.0),
+                  "SetMaximumRMSError": kwargs.get('max_rms', 0.02)}
 
         super(GeoContourLSetStage, self).__init__(Geodesic, prev_stage,
                                                   feature_stage, params)
@@ -480,8 +479,11 @@ class BinaryThreshStage(PipeStage):
         # the previous PipeStage in a nice way.
         px_type = extract_image_type(self.out_type())[0]
 
-        self.instance.SetOutsideValue(NumericTraits[px_type].min())
-        self.instance.SetInsideValue(NumericTraits[px_type].max())
+        # you'd think that this would lead to high-valued surround, but the
+        # opposite turns out to be true. I flipped them and now it's working.
+        # could investigate later...
+        self.instance.SetOutsideValue(NumericTraits[px_type].max())
+        self.instance.SetInsideValue(NumericTraits[px_type].min())
 
     def out_type(self):
         preferred = IMG_UC()
