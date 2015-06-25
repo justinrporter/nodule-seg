@@ -502,6 +502,31 @@ class BinaryThreshStage(PipeStage):
             return avail_templ[0]
 
 
+class WatershedStage(PipeStage):
+    '''An itk PipeStage that wraps WatershedImageFilter'''
+
+    def __init__(self, previous_stage, level, threshold):
+        # pylint: disable=no-name-in-module
+        from itk import WatershedImageFilter
+
+        params = {"SetLevel": level,
+                  "SetThreshold": threshold}
+
+        super(WatershedStage, self).__init__(WatershedImageFilter,
+                                             previous_stage,
+                                             params)
+
+    def out_type(self):
+        from itk import Image, UL
+
+        # ugly hack -- could be determined on a  platform/compiletime basis
+        return Image[UL, 3]
+        # return extract_image_type(self.instance.GetOutput())
+
+    def _instantiate(self, template):
+        return template[self.in_type()].New()
+
+
 class ConverterStage(PipeStage):
     '''An itk PipeStage that implements CastImageFilter to convert from the
     pipeline output type to the specified type. Dimensionality is determined
@@ -511,14 +536,19 @@ class ConverterStage(PipeStage):
         # pylint: disable=no-name-in-module
         from itk import CastImageFilter
 
-        super(ConverterStage, self).__init__(CastImageFilter, previous_stage)
         self.type_out = type_out
+        super(ConverterStage, self).__init__(CastImageFilter, previous_stage)
 
     def out_type(self):
-        from itk import F, Image  # pylint: disable=no-name-in-module
+        import itk
+
+        assert self.out_type is not None
+
         if self.type_out is float:
-            self.type_out = F
+            self.type_out = itk.F
+        elif hasattr(itk, str(self.type_out)):
+            self.type_out = getattr(itk, self.type_out)
 
         dim = extract_image_type(self.in_type())[1]
 
-        return Image[self.type_out, dim]
+        return itk.Image[self.type_out, dim]

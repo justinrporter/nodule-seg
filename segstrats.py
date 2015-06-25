@@ -1,8 +1,103 @@
 '''A collection of strategies for segmenting an image using python and itk.'''
 
 
+def single_segment(fname, outname, seg_alg, seg_opts):
+    '''Run a single segmentation run of an algorithm and process its output
+    into a JSON-able dict.'''
+    import datetime
+
+    start = datetime.datetime.now()
+    stats = {"start": start}
+
+    res = seg_alg(fname, outname, **seg_opts)  # pylint: disable=W0142
+
+    for key in res:
+        stats[key] = res[key]
+
+    stats['time'] = datetime.datetime.now() - start
+
+    return stats
+
+
+def batch_segment(seg_alg, seg_label, outpath,
+                  files, input2output, seg_opts, get_seed):
+    import datetime
+    import os.path
+    import sys
+
+    allstart = datetime.datetime.now()
+
+    stats = {'run': seg_opts}
+    stats['run']['begin_time'] = datetime.datetime.now()
+    stats['run']['seg_alg'] = seg_alg.__name__
+    stats['run']['path'] = outpath
+
+    for fname in files:
+        basefname = os.path.basename(fname)
+        sys.stdout.write("Segment "+basefname+"... ")
+        sys.stdout.flush()
+
+        try:
+            seg_opts['seed'] = get_seed(fname)
+        except KeyError as exc:
+            stats[basefname] = 'skipped'
+            print "skipped (" + str(exc) + ")"
+            continue
+
+        try:
+            outname = input2output(fname, seg_label, outpath)
+
+            res = single_segment(fname, outname, seg_alg, seg_opts)
+
+        except Exception as e:  # pylint: disable=W0703,C0103
+            if len(files) > 1:
+                sys.stdout.write("skipped (threw " + str(e) + " )")
+                stats[basefname] = 'skipped'
+                continue
+            else:
+                raise
+
+        stats[basefname] = res
+        stats[basefname]['fullpath'] = fname
+        stats[basefname]['outpath'] = outname
+
+        print " took", stats[basefname]['time']
+
+    times = [stats[f]['time'] for f in stats if 'time' in stats[f]]
+    skipped = [f for f in stats if stats[f] == 'skipped']
+
+    stats['run']['total_time'] = datetime.datetime.now() - allstart
+
+    return stats
+
+
+def aniso_gauss_watershed(in_image, out_image, **kwargs):
+    '''Implements a basic watershed-based strategy for image segmentation'''
+
+    import itk_attach
+
+    gauss = kwargs['gauss']
+    watershed = kwargs['watershed']
+
+    pipe = itk_attach.FileReader(in_image)
+    aniso = itk_attach.AnisoDiffStage(pipe)
+    gauss = itk_attach.GradMagRecGaussStage(aniso, gauss['sigma'])
+
+    pipe = itk_attach.WatershedStage(pipe,
+                                     watershed['level'],
+                                     watershed['threshold'])
+
+    pipe = itk_attach.ConverterStage(pipe, "UC")
+
+    pipe = itk_attach.FileWriter(pipe, out_image)
+
+    pipe.execute()
+
+    return {}
+
+
 def aniso_gauss_sigmo_geocontour(in_image, out_image, **kwargs):
-    '''Implements a basic strategy that relies upon a gradient magnitude +
+    '''Implements a basic strategy that relies upon a gradient magnitude
     geodesic level set strategy described in the ITK docs.'''
 
     import itk_attach
