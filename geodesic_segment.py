@@ -78,6 +78,14 @@ def main(argv=None):
     times = []
     skipped = []
 
+    with open("geoseg-opts.json", 'w') as f:
+        import json
+        arg_dict = vars(args)
+        arg_dict['begin_time'] = str(datetime.datetime.now())
+        json_out = json.dumps(arg_dict, sort_keys=True,
+                              indent=4, separators=(',', ': '))
+        f.write(json_out)
+
     for fname in args.images:
         basefname = os.path.basename(fname)
         sys.stdout.write("Segmenting " + basefname + "... ")
@@ -107,9 +115,10 @@ def main(argv=None):
 
             sys.stdout.write(str(res))
 
-        except Exception:  # pylint: disable=W0703
+        except Exception as e:  # pylint: disable=W0703,C0103
             if len(args.images) > 1:
                 skipped.append(fname)
+                sys.stdout.write("skipped (threw " + str(e) + " )")
                 continue
             else:
                 raise
