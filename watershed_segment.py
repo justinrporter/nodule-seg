@@ -19,20 +19,11 @@ def process_command_line(argv):
                         help="The image that should be segmented.")
     parser.add_argument('--seeds', type=str,
                         help="A list of files initial points in JSON format.")
-    parser.add_argument('-p', '--path', default=None,
-                        help="The segmented file to output")
-    parser.add_argument('--sigma', default=1.0, type=float,
-                        help="The stddev in units of image spacing for the " +
-                             "GradientMagnitudeRecursiveGaussianImageFilter.")
-    parser.add_argument('--watershed_level', default=0.01, type=float,
-                        help="The weight on propagation force in level set " +
-                        "segmentation.")
-    parser.add_argument('--watershed_threshold', default=.1, type=float,
-                        help="The number of iterations by the " +
-                        "GeodesicActiveContourLevelSetImageFilter")
     parser.add_argument('--intermediate_images', action="store_true",
                         default=False, help="Produce pipeline intermediate " +
                         "images (i.e. after each filter stage.")
+
+    segstrats.register_options(segstrats.aniso_gauss_watershed, parser)
 
     args = parser.parse_args(argv[1:])
 
