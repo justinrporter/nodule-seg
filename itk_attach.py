@@ -300,6 +300,16 @@ class AnisoDiffStage(PipeStage):
         super(AnisoDiffStage, self).__init__(templ, previous_stage, params)
 
 
+class GradMagStage(PipeStage):
+    '''An itk PipeStage that implements GradientMagnitudeImageFilter'''
+
+    def __init__(self, previous_stage):
+                # pylint: disable=no-name-in-module
+        from itk import GradientMagnitudeImageFilter as templ
+
+        super(GradMagStage, self).__init__(templ, previous_stage, {})
+
+
 class GradMagRecGaussStage(PipeStage):
     '''An itk PipeStage that implements
     GradientMagnitudeRecursiveGaussianImageFilter.'''
