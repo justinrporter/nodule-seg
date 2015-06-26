@@ -31,7 +31,7 @@ def main(argv=None):
     import numpy as np
     import os.path
 
-    print "xor,", "auto - manual"
+    print ", ".join(["file", "xor", "auto - manual"])
 
     for (fauto, fmanual) in config.files:
         (auto, manual) = (medpy.io.load(fauto)[0], medpy.io.load(fmanual)[0])
