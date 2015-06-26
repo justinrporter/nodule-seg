@@ -71,6 +71,26 @@ def batch_segment(seg_alg, seg_label, outpath,
     return stats
 
 
+def register_options(segfunc, parser):
+    '''Register appropriate options with an options parser.'''
+
+    parser.add_argument('-p', '--path', default=None,
+                        help="The segmented file to output")
+
+    if segfunc is aniso_gauss_watershed:
+        parser.add_argument(
+            '--sigma', default=1.0, type=float,
+            help="The stddev in units of image spacing for  the " +
+                 "GradientMagnitudeRecursiveGaussian ImageFilter.")
+        parser.add_argument(
+            '--watershed_level', default=0.01, type=float,
+            help="The weight on propagation force in level set segmentation.")
+        parser.add_argument(
+            '--watershed_threshold', default=.1, type=float,
+            help="The number of iterations by the " +
+                 "GeodesicActiveContourLevelSetImageFilter")
+
+
 def aniso_gauss_watershed(in_image, out_image, **kwargs):
     '''Implements a basic watershed-based strategy for image segmentation'''
 
@@ -80,8 +100,8 @@ def aniso_gauss_watershed(in_image, out_image, **kwargs):
     watershed = kwargs['watershed']
 
     pipe = itk_attach.FileReader(in_image)
-    aniso = itk_attach.AnisoDiffStage(pipe)
-    gauss = itk_attach.GradMagRecGaussStage(aniso, gauss['sigma'])
+    pipe = itk_attach.AnisoDiffStage(pipe, iterations=25)
+    pipe = itk_attach.GradMagStage(pipe)
 
     pipe = itk_attach.WatershedStage(pipe,
                                      watershed['level'],
@@ -92,6 +112,20 @@ def aniso_gauss_watershed(in_image, out_image, **kwargs):
     pipe = itk_attach.FileWriter(pipe, out_image)
 
     pipe.execute()
+
+    # A hacky solution that writes the file out using ITK and reads it back as
+    # a numpy array to choose a segmentation based on a seed.
+    import medpy.io
+    import numpy as np
+
+    img = np.array(medpy.io.load(out_image)[0])
+
+    seed = kwargs['seed']
+    chosen_seg = img[seed[0], seed[1], seed[2]]
+
+    img = np.array(img == chosen_seg, dtype='uint8')
+
+    medpy.io.save(img, out_image)
 
     return {}
 
