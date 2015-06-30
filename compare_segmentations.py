@@ -22,6 +22,25 @@ def process_command_line(argv):
     return args
 
 
+def segmentation_stats(auto, manual):
+    import numpy as np
+
+    size = float(np.count_nonzero(manual))
+
+    xor = np.count_nonzero(np.logical_xor(auto, manual))
+    auto_size = np.count_nonzero(auto)
+    dice_index = 2*np.count_nonzero(np.logical_or(auto, manual)) / \
+        float(np.count_nonzero(auto)+np.count_nonzero(manual))
+
+    norm_xor = xor / size
+    norm_diff = auto_size / size
+
+    return {'dice_index': dice_index,
+            'auto_size': auto_size,
+            'norm_xor': norm_xor,
+            'norm_diff': norm_diff}
+
+
 def main(argv=None):
     '''Run the driver script for this module. This code only runs if we're
     being run as a script. Otherwise, it's silent and just exposes methods.'''
@@ -29,7 +48,6 @@ def main(argv=None):
 
     import medpy.io
     from medpy.core.exceptions import ImageLoadingError
-    import numpy as np
     import os.path
 
     hdr = ", ".join(["file", "xor", "size_auto/size_manual", "abs_size",
@@ -40,21 +58,12 @@ def main(argv=None):
         try:
             (auto, manual) = (medpy.io.load(fauto)[0],
                               medpy.io.load(fmanual)[0])
-        except ImageLoadingError as e:
-            sys.stderr.write("Skipping "+str(e)+"\n")
+        except ImageLoadingError as exc:
+            sys.stderr.write("Skipping "+str(exc)+"\n")
             continue
 
-        size = float(np.count_nonzero(manual))
-
         try:
-            xor = np.count_nonzero(np.logical_xor(auto, manual))
-            auto_size = np.count_nonzero(auto)
-            dice_index = 2*np.count_nonzero(np.logical_or(auto, manual)) / \
-                float(np.count_nonzero(auto)+np.count_nonzero(manual))
-
-            norm_xor = xor / size
-            norm_diff = auto_size / size
-
+            stats_dict = segmentation_stats(auto, manual)
         except ValueError:
             sys.stderr.write(" ".join(["Skipping", fauto, "since it differs",
                                        "in size from the manual image",
@@ -62,8 +71,12 @@ def main(argv=None):
                                        str(manual.size), ")"])+"\n")
             continue
 
-        print os.path.basename(fauto), float(norm_xor), float(norm_diff), \
-              auto_size, dice_index
+        out = " ".join([str(stats_dict[i]) for i in ['norm_xor',
+                                                     'norm_diff',
+                                                     'auto_size',
+                                                     'dice_index']])
+
+        print os.path.basename(fauto), out
 
     return 1
 
