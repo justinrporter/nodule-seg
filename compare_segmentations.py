@@ -28,22 +28,32 @@ def main(argv=None):
     config = process_command_line(argv)
 
     import medpy.io
+    from medpy.core.exceptions import ImageLoadingError
     import numpy as np
     import os.path
 
-    print ", ".join(["file", "xor", "auto - manual"])
+    hdr = ", ".join(["file", "xor", "size_auto/size_manual", "abs_size",
+                     "dice index"])
+    print hdr
 
     for (fauto, fmanual) in config.files:
-        (auto, manual) = (medpy.io.load(fauto)[0], medpy.io.load(fmanual)[0])
+        try:
+            (auto, manual) = (medpy.io.load(fauto)[0],
+                              medpy.io.load(fmanual)[0])
+        except ImageLoadingError as e:
+            sys.stderr.write("Skipping "+str(e)+"\n")
+            continue
 
         size = float(np.count_nonzero(manual))
 
         try:
             xor = np.count_nonzero(np.logical_xor(auto, manual))
-            size_diff = np.count_nonzero(auto) - np.count_nonzero(manual)
+            auto_size = np.count_nonzero(auto)
+            dice_index = 2*np.count_nonzero(np.logical_or(auto, manual)) / \
+                float(np.count_nonzero(auto)+np.count_nonzero(manual))
 
             norm_xor = xor / size
-            norm_diff = size_diff / size
+            norm_diff = auto_size / size
 
         except ValueError:
             sys.stderr.write(" ".join(["Skipping", fauto, "since it differs",
@@ -52,7 +62,8 @@ def main(argv=None):
                                        str(manual.size), ")"])+"\n")
             continue
 
-        print os.path.basename(fauto), float(norm_xor), float(norm_diff)
+        print os.path.basename(fauto), float(norm_xor), float(norm_diff), \
+              auto_size, dice_index
 
     return 1
 
