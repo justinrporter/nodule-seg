@@ -118,14 +118,14 @@ def aniso_gauss_watershed(in_image, out_image, **kwargs):
     import medpy.io
     import numpy as np
 
-    img = np.array(medpy.io.load(out_image)[0])
+    (img, hdr) = medpy.io.load(out_image)
 
     seed = kwargs['seed']
     chosen_seg = img[seed[0], seed[1], seed[2]]
 
     img = np.array(img == chosen_seg, dtype='uint8')
 
-    medpy.io.save(img, out_image)
+    medpy.io.save(img, out_image, hdr)
 
     return {}
 
