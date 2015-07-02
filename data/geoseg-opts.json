@@ -1,0 +1,500 @@
+{
+    "begin_time": "2015-06-25 15:14:33.930532",
+    "images": [
+        "../media/nifti/001-FGR_B35F_cropped.nii",
+        "../media/nifti/002-RDH_B35F_cropped.nii",
+        "../media/nifti/003-DLR_B35F_cropped.nii"
+    ],
+    "intermediate_images": false,
+    "path": ".",
+    "seeds": {
+        "001-FGR_B35F_cropped.nii": [
+            94,
+            116,
+            52
+        ],
+        "002-RDH_B35F_cropped.nii": [
+            172,
+            192,
+            84
+        ],
+        "003-DLR_B35F_cropped.nii": [
+            140,
+            126,
+            128
+        ],
+        "004-CAO_B35F_cropped.nii": [
+            189,
+            130,
+            135
+        ],
+        "005-D-C_B35F_cropped.nii": [
+            88,
+            81,
+            83
+        ],
+        "007-GWK_B35F_cropped.nii": [
+            159,
+            179,
+            98
+        ],
+        "008-DRQ_B35F_cropped.nii": [
+            136,
+            146,
+            70
+        ],
+        "009-CEC_B35F_cropped.nii": [
+            173,
+            221,
+            122
+        ],
+        "010-TBS_B35F_cropped.nii": [
+            88,
+            86,
+            38
+        ],
+        "011-H-S_B35F_cropped.nii": [
+            130,
+            135,
+            66
+        ],
+        "012-DGA_B35F_cropped.nii": [
+            198,
+            173,
+            95
+        ],
+        "013-JKD_B35F_cropped.nii": [
+            98,
+            89,
+            56
+        ],
+        "014-JCB_B35F_cropped.nii": [
+            142,
+            139,
+            54
+        ],
+        "015-MAC_B35F_cropped.nii": [
+            121,
+            145,
+            56
+        ],
+        "016-BJM_B35F_cropped.nii": [
+            151,
+            151,
+            78
+        ],
+        "017-WHF_B35F_cropped.nii": [
+            133,
+            126,
+            68
+        ],
+        "018-NLS_B35F_cropped.nii": [
+            99,
+            165,
+            105
+        ],
+        "019-ALK_B35F_cropped.nii": [
+            147,
+            181,
+            73
+        ],
+        "020-JIC_B35F_cropped.nii": [
+            109,
+            131,
+            62
+        ],
+        "021-MSH_B35F_cropped.nii": [
+            129,
+            164,
+            75
+        ],
+        "022-BLW_B35F_cropped.nii": [
+            152,
+            177,
+            147
+        ],
+        "023-SHG_B35F_cropped.nii": [
+            151,
+            160,
+            68
+        ],
+        "024-GRO_B35F_cropped.nii": [
+            78,
+            81,
+            57
+        ],
+        "025-RTB_B35F_cropped.nii": [
+            189,
+            196,
+            102
+        ],
+        "026-LSS_B35F_cropped.nii": [
+            195,
+            162,
+            69
+        ],
+        "027-CSD_B35F_cropped.nii": [
+            170,
+            141,
+            83
+        ],
+        "028-PJS_B35F_cropped.nii": [
+            199,
+            151,
+            92
+        ],
+        "030-VBL_B35F_cropped.nii": [
+            130,
+            148,
+            73
+        ],
+        "031-SAA_B35F_cropped.nii": [
+            113,
+            112,
+            54
+        ],
+        "032-RES_B35F_cropped.nii": [
+            168,
+            198,
+            127
+        ],
+        "033-JDC_B35F_cropped.nii": [
+            179,
+            135,
+            68
+        ],
+        "035-DTW_B35F_cropped.nii": [
+            156,
+            134,
+            103
+        ],
+        "036-HJB_B35F_cropped.nii": [
+            190,
+            171,
+            94
+        ],
+        "037-IAG_B35F_cropped.nii": [
+            147,
+            158,
+            69
+        ],
+        "038-E-T_B35F_cropped.nii": [
+            160,
+            135,
+            81
+        ],
+        "039-RCL_B35F_cropped.nii": [
+            156,
+            158,
+            91
+        ],
+        "040-BAR_B35F_cropped.nii": [
+            130,
+            155,
+            65
+        ],
+        "041-LMW_B35F_cropped.nii": [
+            144,
+            176,
+            125
+        ],
+        "042-TLH_B35F_cropped.nii": [
+            164,
+            167,
+            143
+        ],
+        "043-BPC_B35F_cropped.nii": [
+            151,
+            160,
+            106
+        ],
+        "044-LAW_B35F_cropped.nii": [
+            157,
+            188,
+            89
+        ],
+        "045-RNM_B35F_cropped.nii": [
+            141,
+            209,
+            140
+        ],
+        "046-PRH_B35F_cropped.nii": [
+            138,
+            141,
+            71
+        ],
+        "046b-PRH_B35F_cropped.nii": [
+            98,
+            119,
+            46
+        ],
+        "047-HHS_B35F_cropped.nii": [
+            143,
+            174,
+            136
+        ],
+        "048-LGC_B35F_cropped.nii": [
+            131,
+            162,
+            70
+        ],
+        "049-DJG_B35F_cropped.nii": [
+            233,
+            137,
+            137
+        ],
+        "050-GAE_B35F_cropped.nii": [
+            188,
+            161,
+            93
+        ],
+        "051-MJH_B35F_cropped.nii": [
+            176,
+            185,
+            107
+        ],
+        "052-MRM_B35F_cropped.nii": [
+            143,
+            142,
+            79
+        ],
+        "053-SMG_B35F_cropped.nii": [
+            145,
+            152,
+            68
+        ],
+        "054-WRK_B35F_cropped.nii": [
+            171,
+            151,
+            115
+        ],
+        "055-EEM_B35F_cropped.nii": [
+            177,
+            113,
+            72
+        ],
+        "056-LAP_B35F_cropped.nii": [
+            84,
+            111,
+            65
+        ],
+        "057-JCC_B35F_cropped.nii": [
+            118,
+            119,
+            40
+        ],
+        "058-MPW_B35F_cropped.nii": [
+            99,
+            92,
+            33
+        ],
+        "059-J-P_B35F_cropped.nii": [
+            121,
+            118,
+            82
+        ],
+        "060-BJP_B35F_cropped.nii": [
+            115,
+            120,
+            78
+        ],
+        "061-LAC_B35F_cropped.nii": [
+            206,
+            171,
+            84
+        ],
+        "062-HMR_B35F_cropped.nii": [
+            187,
+            129,
+            74
+        ],
+        "063-EFH_B35F_cropped.nii": [
+            158,
+            146,
+            99
+        ],
+        "064-ANW_B35F_cropped.nii": [
+            151,
+            132,
+            65
+        ],
+        "065-BJR_B35F_cropped.nii": [
+            146,
+            131,
+            71
+        ],
+        "066-AMB_B35F_cropped.nii": [
+            161,
+            173,
+            95
+        ],
+        "067-SVK_B35F_cropped.nii": [
+            136,
+            123,
+            116
+        ],
+        "069-CDA_B35F_cropped.nii": [
+            168,
+            133,
+            124
+        ],
+        "070-T-W_B35F_cropped.nii": [
+            171,
+            132,
+            53
+        ],
+        "071-WLC_B35F_cropped.nii": [
+            113,
+            141,
+            64
+        ],
+        "072-SGB_B35F_cropped.nii": [
+            167,
+            148,
+            169
+        ],
+        "074-ECR_B35F_cropped.nii": [
+            132,
+            170,
+            88
+        ],
+        "075-B-G_B35F_cropped.nii": [
+            143,
+            148,
+            60
+        ],
+        "076-OEB_B35F_cropped.nii": [
+            136,
+            197,
+            56
+        ],
+        "077-GFS_B35F_cropped.nii": [
+            152,
+            154,
+            70
+        ],
+        "078-RAV_B35F_cropped.nii": [
+            116,
+            162,
+            105
+        ],
+        "079-DKL_B35F_cropped.nii": [
+            162,
+            158,
+            60
+        ],
+        "080-COR_B35F_cropped.nii": [
+            113,
+            113,
+            85
+        ],
+        "081-D-C_B35F_cropped.nii": [
+            131,
+            150,
+            35
+        ],
+        "082-CAA_B35F_cropped.nii": [
+            239,
+            99,
+            144
+        ],
+        "084-PMS_B35F_cropped.nii": [
+            117,
+            170,
+            109
+        ],
+        "085-JAC_B35F_cropped.nii": [
+            166,
+            168,
+            104
+        ],
+        "086-DRA_B35F_cropped.nii": [
+            111,
+            153,
+            68
+        ],
+        "087-ATF_B35F_cropped.nii": [
+            110,
+            129,
+            59
+        ],
+        "089-J-S_B35F_cropped.nii": [
+            101,
+            114,
+            43
+        ],
+        "090-LFJ_B35F_cropped.nii": [
+            132,
+            140,
+            58
+        ],
+        "091-L-S_B35F_cropped.nii": [
+            155,
+            141,
+            71
+        ],
+        "092-SMJ_B35F_cropped.nii": [
+            147,
+            153,
+            108
+        ],
+        "093a-DWF_B35F_cropped.nii": [
+            189,
+            137,
+            83
+        ],
+        "093b-DWF_B35F_cropped.nii": [
+            121,
+            123,
+            48
+        ],
+        "094-SLK_B35F_cropped.nii": [
+            151,
+            109,
+            74
+        ],
+        "095-MLG_B35F_cropped.nii": [
+            168,
+            174,
+            37
+        ],
+        "096-MLL_B35F_cropped.nii": [
+            156,
+            208,
+            72
+        ],
+        "097-MLW_B35F_cropped.nii": [
+            204,
+            191,
+            55
+        ],
+        "098-TLT_B35F_cropped.nii": [
+            144,
+            174,
+            74
+        ],
+        "099-DWG_B35F_cropped.nii": [
+            147,
+            128,
+            124
+        ],
+        "100-SWR_B35F_cropped.nii": [
+            107,
+            241,
+            90
+        ],
+        "102-BLT_B35F_cropped.nii": [
+            118,
+            182,
+            49
+        ],
+        "103-CSW_B35F_cropped.nii": [
+            255,
+            180,
+            34
+        ]
+    },
+    "sigma": 0.1,
+    "watershed_level": 0.01,
+    "watershed_threshold": 0.1
+}

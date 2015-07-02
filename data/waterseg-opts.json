@@ -1,0 +1,603 @@
+{
+    "001-FGR_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/001-FGR_B35F_cropped.nii",
+        "outpath": "../media/nifti/001-FGR_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 13:31:42.272291",
+        "time": "0:00:38.919816"
+    },
+    "002-RDH_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/002-RDH_B35F_cropped.nii",
+        "outpath": "../media/nifti/002-RDH_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 13:32:21.192731",
+        "time": "0:02:01.498031"
+    },
+    "003-DLR_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/003-DLR_B35F_cropped.nii",
+        "outpath": "../media/nifti/003-DLR_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 13:34:22.691123",
+        "time": "0:01:36.537766"
+    },
+    "004-CAO_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/004-CAO_B35F_cropped.nii",
+        "outpath": "../media/nifti/004-CAO_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 13:35:59.229474",
+        "time": "0:03:41.788366"
+    },
+    "005-D-C_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/005-D-C_B35F_cropped.nii",
+        "outpath": "../media/nifti/005-D-C_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 13:39:41.018090",
+        "time": "0:00:18.122385"
+    },
+    "007-GWK_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/007-GWK_B35F_cropped.nii",
+        "outpath": "../media/nifti/007-GWK_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 13:39:59.140788",
+        "time": "0:02:36.560967"
+    },
+    "008-DRQ_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/008-DRQ_B35F_cropped.nii",
+        "outpath": "../media/nifti/008-DRQ_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 13:42:35.702182",
+        "time": "0:01:02.094223"
+    },
+    "009-CEC_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/009-CEC_B35F_cropped.nii",
+        "outpath": "../media/nifti/009-CEC_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 13:43:37.796897",
+        "time": "0:05:15.581873"
+    },
+    "010-TBS_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/010-TBS_B35F_cropped.nii",
+        "outpath": "../media/nifti/010-TBS_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 13:48:53.379227",
+        "time": "0:00:11.142292"
+    },
+    "011-H-S_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/011-H-S_B35F_cropped.nii",
+        "outpath": "../media/nifti/011-H-S_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 13:49:04.521708",
+        "time": "0:00:41.185853"
+    },
+    "012-DGA_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/012-DGA_B35F_cropped.nii",
+        "outpath": "../media/nifti/012-DGA_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 13:49:45.708097",
+        "time": "0:02:11.499901"
+    },
+    "013-JKD_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/013-JKD_B35F_cropped.nii",
+        "outpath": "../media/nifti/013-JKD_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 13:51:57.208435",
+        "time": "0:00:19.467671"
+    },
+    "014-JCB_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/014-JCB_B35F_cropped.nii",
+        "outpath": "../media/nifti/014-JCB_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 13:52:16.676502",
+        "time": "0:00:37.929019"
+    },
+    "015-MAC_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/015-MAC_B35F_cropped.nii",
+        "outpath": "../media/nifti/015-MAC_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 13:52:54.606110",
+        "time": "0:00:38.861747"
+    },
+    "016-BJM_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/016-BJM_B35F_cropped.nii",
+        "outpath": "../media/nifti/016-BJM_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 13:53:33.468269",
+        "time": "0:01:19.673014"
+    },
+    "017-WHF_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/017-WHF_B35F_cropped.nii",
+        "outpath": "../media/nifti/017-WHF_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 13:54:53.141705",
+        "time": "0:00:33.603697"
+    },
+    "018-NLS_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/018-NLS_B35F_cropped.nii",
+        "outpath": "../media/nifti/018-NLS_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 13:55:26.745923",
+        "time": "0:01:26.132941"
+    },
+    "019-ALK_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/019-ALK_B35F_cropped.nii",
+        "outpath": "../media/nifti/019-ALK_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 13:56:52.879210",
+        "time": "0:00:43.571226"
+    },
+    "020-JIC_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/020-JIC_B35F_cropped.nii",
+        "outpath": "../media/nifti/020-JIC_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 13:57:36.451096",
+        "time": "0:00:34.501226"
+    },
+    "021-MSH_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/021-MSH_B35F_cropped.nii",
+        "outpath": "../media/nifti/021-MSH_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 13:58:10.952769",
+        "time": "0:01:07.600865"
+    },
+    "022-BLW_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/022-BLW_B35F_cropped.nii",
+        "outpath": "../media/nifti/022-BLW_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 13:59:18.553895",
+        "time": "0:02:05.740325"
+    },
+    "023-SHG_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/023-SHG_B35F_cropped.nii",
+        "outpath": "../media/nifti/023-SHG_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:01:24.294938",
+        "time": "0:00:43.593500"
+    },
+    "024-GRO_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/024-GRO_B35F_cropped.nii",
+        "outpath": "../media/nifti/024-GRO_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:02:07.888838",
+        "time": "0:00:10.123975"
+    },
+    "025-RTB_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/025-RTB_B35F_cropped.nii",
+        "outpath": "../media/nifti/025-RTB_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:02:18.013033",
+        "time": "0:03:05.527924"
+    },
+    "026-LSS_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/026-LSS_B35F_cropped.nii",
+        "outpath": "../media/nifti/026-LSS_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:05:23.541473",
+        "time": "0:01:00.158383"
+    },
+    "027-CSD_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/027-CSD_B35F_cropped.nii",
+        "outpath": "../media/nifti/027-CSD_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:06:23.700294",
+        "time": "0:01:14.664025"
+    },
+    "028-PJS_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/028-PJS_B35F_cropped.nii",
+        "outpath": "../media/nifti/028-PJS_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:07:38.364947",
+        "time": "0:01:14.495829"
+    },
+    "030-VBL_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/030-VBL_B35F_cropped.nii",
+        "outpath": "../media/nifti/030-VBL_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:08:52.861294",
+        "time": "0:00:49.582793"
+    },
+    "031-SAA_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/031-SAA_B35F_cropped.nii",
+        "outpath": "../media/nifti/031-SAA_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:09:42.444552",
+        "time": "0:00:40.041191"
+    },
+    "032-RES_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/032-RES_B35F_cropped.nii",
+        "outpath": "../media/nifti/032-RES_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:10:22.486243",
+        "time": "0:02:45.627675"
+    },
+    "033-JDC_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/033-JDC_B35F_cropped.nii",
+        "outpath": "../media/nifti/033-JDC_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:13:08.114341",
+        "time": "0:01:13.945230"
+    },
+    "035-DTW_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/035-DTW_B35F_cropped.nii",
+        "outpath": "../media/nifti/035-DTW_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:14:22.059992",
+        "time": "0:02:24.824045"
+    },
+    "036-HJB_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/036-HJB_B35F_cropped.nii",
+        "outpath": "../media/nifti/036-HJB_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:16:46.884414",
+        "time": "0:03:29.027160"
+    },
+    "037-IAG_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/037-IAG_B35F_cropped.nii",
+        "outpath": "../media/nifti/037-IAG_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:20:15.911932",
+        "time": "0:01:07.668118"
+    },
+    "038-E-T_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/038-E-T_B35F_cropped.nii",
+        "outpath": "../media/nifti/038-E-T_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:21:23.580546",
+        "time": "0:01:38.315181"
+    },
+    "039-RCL_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/039-RCL_B35F_cropped.nii",
+        "outpath": "../media/nifti/039-RCL_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:23:01.896266",
+        "time": "0:01:04.033673"
+    },
+    "040-BAR_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/040-BAR_B35F_cropped.nii",
+        "outpath": "../media/nifti/040-BAR_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:24:05.930256",
+        "time": "0:00:40.971326"
+    },
+    "041-LMW_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/041-LMW_B35F_cropped.nii",
+        "outpath": "../media/nifti/041-LMW_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:24:46.901737",
+        "time": "0:01:40.617745"
+    },
+    "042-TLH_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/042-TLH_B35F_cropped.nii",
+        "outpath": "../media/nifti/042-TLH_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:26:27.519884",
+        "time": "0:04:44.685288"
+    },
+    "043-BPC_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/043-BPC_B35F_cropped.nii",
+        "outpath": "../media/nifti/043-BPC_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:31:12.205577",
+        "time": "0:01:33.407545"
+    },
+    "044-LAW_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/044-LAW_B35F_cropped.nii",
+        "outpath": "../media/nifti/044-LAW_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:32:45.613538",
+        "time": "0:01:14.728403"
+    },
+    "045-RNM_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/045-RNM_B35F_cropped.nii",
+        "outpath": "../media/nifti/045-RNM_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:34:00.342392",
+        "time": "0:03:36.649168"
+    },
+    "046-PRH_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/046-PRH_B35F_cropped.nii",
+        "outpath": "../media/nifti/046-PRH_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:37:59.859221",
+        "time": "0:00:50.897631"
+    },
+    "046b-PRH_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/046b-PRH_B35F_cropped.nii",
+        "outpath": "../media/nifti/046b-PRH_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:37:36.992099",
+        "time": "0:00:22.866860"
+    },
+    "047-HHS_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/047-HHS_B35F_cropped.nii",
+        "outpath": "../media/nifti/047-HHS_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:38:50.757233",
+        "time": "0:01:44.100074"
+    },
+    "048-LGC_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/048-LGC_B35F_cropped.nii",
+        "outpath": "../media/nifti/048-LGC_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:40:34.857707",
+        "time": "0:00:50.092228"
+    },
+    "049-DJG_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/049-DJG_B35F_cropped.nii",
+        "outpath": "../media/nifti/049-DJG_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:41:24.950208",
+        "time": "0:02:47.680740"
+    },
+    "050-GAE_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/050-GAE_B35F_cropped.nii",
+        "outpath": "../media/nifti/050-GAE_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:44:12.631327",
+        "time": "0:01:35.258226"
+    },
+    "051-MJH_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/051-MJH_B35F_cropped.nii",
+        "outpath": "../media/nifti/051-MJH_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:45:47.890022",
+        "time": "0:01:40.782884"
+    },
+    "052-MRM_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/052-MRM_B35F_cropped.nii",
+        "outpath": "../media/nifti/052-MRM_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:47:28.673137",
+        "time": "0:01:14.921651"
+    },
+    "053-SMG_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/053-SMG_B35F_cropped.nii",
+        "outpath": "../media/nifti/053-SMG_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:48:43.595263",
+        "time": "0:00:52.779555"
+    },
+    "054-WRK_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/054-WRK_B35F_cropped.nii",
+        "outpath": "../media/nifti/054-WRK_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:49:36.375287",
+        "time": "0:02:12.262533"
+    },
+    "055-EEM_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/055-EEM_B35F_cropped.nii",
+        "outpath": "../media/nifti/055-EEM_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:51:48.638255",
+        "time": "0:01:05.663817"
+    },
+    "056-LAP_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/056-LAP_B35F_cropped.nii",
+        "outpath": "../media/nifti/056-LAP_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:52:54.302529",
+        "time": "0:00:32.730595"
+    },
+    "057-JCC_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/057-JCC_B35F_cropped.nii",
+        "outpath": "../media/nifti/057-JCC_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:53:27.033458",
+        "time": "0:00:20.721975"
+    },
+    "058-MPW_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/058-MPW_B35F_cropped.nii",
+        "outpath": "../media/nifti/058-MPW_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:53:47.755585",
+        "time": "0:00:13.477347"
+    },
+    "059-J-P_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/059-J-P_B35F_cropped.nii",
+        "outpath": "../media/nifti/059-J-P_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:54:01.233137",
+        "time": "0:00:52.115942"
+    },
+    "060-BJP_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/060-BJP_B35F_cropped.nii",
+        "outpath": "../media/nifti/060-BJP_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:54:53.349358",
+        "time": "0:00:38.533256"
+    },
+    "061-LAC_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/061-LAC_B35F_cropped.nii",
+        "outpath": "../media/nifti/061-LAC_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:55:31.883010",
+        "time": "0:02:22.997284"
+    },
+    "062-HMR_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/062-HMR_B35F_cropped.nii",
+        "outpath": "../media/nifti/062-HMR_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:57:54.880634",
+        "time": "0:01:16.386348"
+    },
+    "063-EFH_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/063-EFH_B35F_cropped.nii",
+        "outpath": "../media/nifti/063-EFH_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 14:59:11.267340",
+        "time": "0:01:41.897176"
+    },
+    "064-ANW_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/064-ANW_B35F_cropped.nii",
+        "outpath": "../media/nifti/064-ANW_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:00:53.164849",
+        "time": "0:00:37.935094"
+    },
+    "065-BJR_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/065-BJR_B35F_cropped.nii",
+        "outpath": "../media/nifti/065-BJR_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:01:31.100318",
+        "time": "0:01:00.006533"
+    },
+    "066-AMB_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/066-AMB_B35F_cropped.nii",
+        "outpath": "../media/nifti/066-AMB_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:02:31.107115",
+        "time": "0:02:14.933086"
+    },
+    "067-SVK_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/067-SVK_B35F_cropped.nii",
+        "outpath": "../media/nifti/067-SVK_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:04:46.040573",
+        "time": "0:01:39.731095"
+    },
+    "069-CDA_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/069-CDA_B35F_cropped.nii",
+        "outpath": "../media/nifti/069-CDA_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:06:25.772005",
+        "time": "0:01:31.287253"
+    },
+    "070-T-W_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/070-T-W_B35F_cropped.nii",
+        "outpath": "../media/nifti/070-T-W_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:07:57.059738",
+        "time": "0:00:41.746666"
+    },
+    "071-WLC_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/071-WLC_B35F_cropped.nii",
+        "outpath": "../media/nifti/071-WLC_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:08:38.806669",
+        "time": "0:00:48.093588"
+    },
+    "072-SGB_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/072-SGB_B35F_cropped.nii",
+        "outpath": "../media/nifti/072-SGB_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:09:26.900744",
+        "time": "0:02:48.814304"
+    },
+    "074-ECR_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/074-ECR_B35F_cropped.nii",
+        "outpath": "../media/nifti/074-ECR_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:12:15.715513",
+        "time": "0:02:14.582300"
+    },
+    "075-B-G_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/075-B-G_B35F_cropped.nii",
+        "outpath": "../media/nifti/075-B-G_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:14:30.298255",
+        "time": "0:01:04.196428"
+    },
+    "076-OEB_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/076-OEB_B35F_cropped.nii",
+        "outpath": "../media/nifti/076-OEB_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:15:34.495078",
+        "time": "0:01:07.013775"
+    },
+    "077-GFS_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/077-GFS_B35F_cropped.nii",
+        "outpath": "../media/nifti/077-GFS_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:16:41.509278",
+        "time": "0:01:01.295777"
+    },
+    "078-RAV_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/078-RAV_B35F_cropped.nii",
+        "outpath": "../media/nifti/078-RAV_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:17:42.805286",
+        "time": "0:01:30.333687"
+    },
+    "079-DKL_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/079-DKL_B35F_cropped.nii",
+        "outpath": "../media/nifti/079-DKL_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:19:13.139474",
+        "time": "0:01:33.553603"
+    },
+    "080-COR_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/080-COR_B35F_cropped.nii",
+        "outpath": "../media/nifti/080-COR_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:20:46.693543",
+        "time": "0:00:51.418303"
+    },
+    "081-D-C_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/081-D-C_B35F_cropped.nii",
+        "outpath": "../media/nifti/081-D-C_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:21:38.112223",
+        "time": "0:00:19.650764"
+    },
+    "082-CAA_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/082-CAA_B35F_cropped.nii",
+        "outpath": "../media/nifti/082-CAA_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:21:57.763164",
+        "time": "0:01:14.907484"
+    },
+    "083-SEC_B35F_cropped.nii": "skipped",
+    "084-PMS_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/084-PMS_B35F_cropped.nii",
+        "outpath": "../media/nifti/084-PMS_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:23:12.671191",
+        "time": "0:02:17.544184"
+    },
+    "085-JAC_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/085-JAC_B35F_cropped.nii",
+        "outpath": "../media/nifti/085-JAC_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:25:30.215999",
+        "time": "0:02:09.806640"
+    },
+    "086-DRA_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/086-DRA_B35F_cropped.nii",
+        "outpath": "../media/nifti/086-DRA_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:27:40.023221",
+        "time": "0:00:36.625505"
+    },
+    "087-ATF_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/087-ATF_B35F_cropped.nii",
+        "outpath": "../media/nifti/087-ATF_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:28:16.649257",
+        "time": "0:00:34.360292"
+    },
+    "089-J-S_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/089-J-S_B35F_cropped.nii",
+        "outpath": "../media/nifti/089-J-S_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:28:51.009882",
+        "time": "0:00:26.239804"
+    },
+    "090-LFJ_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/090-LFJ_B35F_cropped.nii",
+        "outpath": "../media/nifti/090-LFJ_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:29:17.249873",
+        "time": "0:00:41.476492"
+    },
+    "091-L-S_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/091-L-S_B35F_cropped.nii",
+        "outpath": "../media/nifti/091-L-S_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:29:58.726620",
+        "time": "0:01:02.446670"
+    },
+    "092-SMJ_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/092-SMJ_B35F_cropped.nii",
+        "outpath": "../media/nifti/092-SMJ_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:31:01.173536",
+        "time": "0:01:33.773273"
+    },
+    "093a-DWF_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/093a-DWF_B35F_cropped.nii",
+        "outpath": "../media/nifti/093a-DWF_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:32:34.947330",
+        "time": "0:01:13.262356"
+    },
+    "093b-DWF_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/093b-DWF_B35F_cropped.nii",
+        "outpath": "../media/nifti/093b-DWF_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:33:48.210302",
+        "time": "0:00:42.870008"
+    },
+    "094-SLK_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/094-SLK_B35F_cropped.nii",
+        "outpath": "../media/nifti/094-SLK_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:34:31.080626",
+        "time": "0:00:59.076772"
+    },
+    "095-MLG_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/095-MLG_B35F_cropped.nii",
+        "outpath": "../media/nifti/095-MLG_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:35:30.157758",
+        "time": "0:00:57.419646"
+    },
+    "096-MLL_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/096-MLL_B35F_cropped.nii",
+        "outpath": "../media/nifti/096-MLL_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:36:27.577821",
+        "time": "0:01:16.683234"
+    },
+    "097-MLW_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/097-MLW_B35F_cropped.nii",
+        "outpath": "../media/nifti/097-MLW_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:37:44.261282",
+        "time": "0:01:45.179868"
+    },
+    "098-TLT_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/098-TLT_B35F_cropped.nii",
+        "outpath": "../media/nifti/098-TLT_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:39:29.441502",
+        "time": "0:01:42.747817"
+    },
+    "099-DWG_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/099-DWG_B35F_cropped.nii",
+        "outpath": "../media/nifti/099-DWG_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:41:12.189701",
+        "time": "0:02:08.354637"
+    },
+    "100-SWR_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/100-SWR_B35F_cropped.nii",
+        "outpath": "../media/nifti/100-SWR_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:43:20.544729",
+        "time": "0:02:00.859431"
+    },
+    "102-BLT_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/102-BLT_B35F_cropped.nii",
+        "outpath": "../media/nifti/102-BLT_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:45:21.404713",
+        "time": "0:01:14.766909"
+    },
+    "103-CSW_B35F_cropped.nii": {
+        "fullpath": "../media/nifti/103-CSW_B35F_cropped.nii",
+        "outpath": "../media/nifti/103-CSW_B35F_cropped-waterseg.nii",
+        "start": "2015-06-30 15:46:36.172120",
+        "time": "0:00:49.226372"
+    },
+    "run": {
+        "begin_time": "2015-06-30 13:31:42.272231",
+        "gauss": {
+            "sigma": 0.1
+        },
+        "path": null,
+        "seed": [
+            255,
+            180,
+            34
+        ],
+        "seg_alg": "aniso_gauss_watershed",
+        "total_time": "2:15:43.126636",
+        "watershed": {
+            "level": 0.1,
+            "threshold": 0.01
+        }
+    }
+}
