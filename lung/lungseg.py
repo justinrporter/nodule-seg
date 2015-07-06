@@ -158,16 +158,11 @@ def distribute_seeds(img, n_pts=100):
 
     array = sitk.GetArrayFromImage(img)
 
-    print(array.shape)
-
     seeds = list()
     while len(seeds) < n_pts:
         (z, y, x) = [random.randrange(0, i) for i in array.shape]
 
-        print("Trying", (x, y, z))
-
         if array[z, y, x] != 0 and (z, y, x) not in seeds:
-            print("Accepted!")
             seeds.append((z, y, x))
 
     return seeds
@@ -200,26 +195,32 @@ def lungseg(img):
     return img
 
 
+def segment_lung_image(fullpath, img_load, nseeds):
+    basename = os.path.basename(fullpath)
+    img = img_load(fullpath)
+
+    img = lungseg(img)
+
+    seeds = {'numpy_indexed': distribute_seeds(img, nseeds)}
+    seeds['medpy_indexed'] = [(x, y, z) for (z, y, x) in
+                              seeds['numpy_indexed']]
+
+    with open(fullpath+".json", 'w') as f:
+        f.write(json.dumps(seeds, sort_keys=True,
+                separators=(',', ': ')))
+
+    out = sitk.ImageFileWriter()
+    out.SetFileName(fullpath+'-lungseg.nii')
+    out.Execute(img)
+
+
 def main(argv=None):
     '''Run the driver script for this module. This code only runs if we're
     being run as a script. Otherwise, it's sislent and just exposes methods.'''
     args = process_command_line(argv)
 
     for dicomdir in args.dicomdirs:
-        fname = os.path.basename(dicomdir)
-        img = load_dicom(dicomdir)
-
-        img = lungseg(img)
-
-        seeds = {fname: distribute_seeds(img, args.nseeds)}
-
-        with open(dicomdir+".json", 'w') as f:
-            f.write(json.dumps(seeds, sort_keys=True, indent=2,
-                    separators=(',', ': ')))
-
-        out = sitk.ImageFileWriter()
-        out.SetFileName(fname+'-lungseg.nii')
-        out.Execute(img)
+        segment_lung_image(os.path.abspath(dicomdir), load_dicom, args.nseeds)
 
     return 1
 
