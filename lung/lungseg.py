@@ -19,6 +19,8 @@ def process_command_line(argv):
 
     parser.add_argument("--dicomdirs", nargs="+",
                         help="The arguments the script operates on.")
+    parser.add_argument("--nseeds", type=int, default=100,
+                        help="The number of randomly placed seeds to produce.")
 
     args = parser.parse_args(argv[1:])
 
@@ -173,7 +175,6 @@ def distribute_seeds(img, n_pts=100):
 
 def checkdist(seeds):
     '''UNDER CONSTRUCTION'''
-    raise NotImplementedError("Checkdist is under construction.")
 
     dists = {}
 
@@ -183,6 +184,8 @@ def checkdist(seeds):
                         for k in range(len(seed))])**0.5
 
             dists[(seed, oseed)] = dist
+
+    raise NotImplementedError("Checkdist is under construction.")
 
 
 def lungseg(img):
@@ -208,11 +211,11 @@ def main(argv=None):
 
         img = lungseg(img)
 
-        seeds = {fname: distribute_seeds(img, 5)}
+        seeds = {fname: distribute_seeds(img, args.nseeds)}
 
-        with open(fname+".json", 'w') as f:
-            f.write(json.dumps(seeds, sort_keys=True,
-                               indent=4, separators=(',', ': ')))
+        with open(dicomdir+".json", 'w') as f:
+            f.write(json.dumps(seeds, sort_keys=True, indent=2,
+                    separators=(',', ': ')))
 
         out = sitk.ImageFileWriter()
         out.SetFileName(fname+'-lungseg.nii')
