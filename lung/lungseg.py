@@ -1,10 +1,14 @@
+'''Produce a segmentation of the lungs, and produce a set of seeds for that
+segmentation.'''
+
 from __future__ import print_function
 import sys
 import argparse
 import SimpleITK as sitk  # pylint: disable=F0401
-
-import matplotlib
+import json
+import os
 import numpy as np
+
 
 def process_command_line(argv):
     '''Parse the command line and do a first-pass on processing them into a
@@ -32,7 +36,10 @@ def load_dicom(dirname):
 
 
 def otsu(img):
-    import numpy as np
+    '''Use an 'otsu' thresholding to segment out high- and low-attenuation
+    regions. In every chest CT case I've seen, it produces an "air" region and
+    a "soft tissue + bone" region, but a constrast CT might produce different
+    results.'''
 
     array = sitk.GetArrayFromImage(img)
     minval = np.min(array)
@@ -57,6 +64,9 @@ def otsu(img):
 
 
 def dialate(img):
+    '''Once lungs are segmented out specifically, there's a tendency to get
+    little islands in the lung fields. This dialatest the selection to remove
+    islands and to generate a smoother segmentation.'''
     filt = sitk.BinaryDilateImageFilter()
     filt.SetKernelType(filt.Ball)
     filt.SetKernelRadius(3)
@@ -65,7 +75,9 @@ def dialate(img):
 
 
 def find_components(img):
-    import numpy as np
+    '''Produce a separate label for each region in the binary image. Takes the
+    type at the edge of the image (specifically at 0,0,0) to be 1 and zero for
+    all other labels.'''
 
     array = sitk.GetArrayFromImage(img)
 
@@ -80,6 +92,7 @@ def find_components(img):
 
 
 def dump(img, name):
+    '''Dump several slices for the given numpy array.'''
     from matplotlib.figure import Figure
     from matplotlib.backends.backend_agg import FigureCanvasAgg as FigCanvas
 
@@ -121,7 +134,9 @@ def isolate_lung_field(img):
 
 
 def isolate_not_biggest(img):
-
+    '''Takes an sitk image with labels for many regions and produces a binary
+    mask with zero for the largest region (by number of voxels) and one
+    everywhere else.'''
     array = sitk.GetArrayFromImage(img)
 
     counts = np.bincount(np.ravel(array))
@@ -135,7 +150,8 @@ def isolate_not_biggest(img):
     return not_big
 
 
-def distribute_seeds(img, n=100):
+def distribute_seeds(img, n_pts=100):
+    '''Randomly distribute n seeds amongst all points where img != 0'''
     import random
 
     array = sitk.GetArrayFromImage(img)
@@ -143,7 +159,7 @@ def distribute_seeds(img, n=100):
     print(array.shape)
 
     seeds = list()
-    while len(seeds) < n:
+    while len(seeds) < n_pts:
         (z, y, x) = [random.randrange(0, i) for i in array.shape]
 
         print("Trying", (x, y, z))
@@ -156,6 +172,9 @@ def distribute_seeds(img, n=100):
 
 
 def checkdist(seeds):
+    '''UNDER CONSTRUCTION'''
+    raise NotImplementedError("Checkdist is under construction.")
+
     dists = {}
 
     for (i, seed) in enumerate(seeds):
@@ -164,8 +183,6 @@ def checkdist(seeds):
                         for k in range(len(seed))])**0.5
 
             dists[(seed, oseed)] = dist
-
-    return mindists
 
 
 def lungseg(img):
@@ -179,22 +196,26 @@ def lungseg(img):
 
     return img
 
+
 def main(argv=None):
     '''Run the driver script for this module. This code only runs if we're
     being run as a script. Otherwise, it's sislent and just exposes methods.'''
     args = process_command_line(argv)
 
-    import numpy as np
-
     for dicomdir in args.dicomdirs:
+        fname = os.path.basename(dicomdir)
         img = load_dicom(dicomdir)
 
         img = lungseg(img)
 
-        seeds = distribute_seeds(img, 5)
+        seeds = {fname: distribute_seeds(img, 5)}
+
+        with open(fname+".json", 'w') as f:
+            f.write(json.dumps(seeds, sort_keys=True,
+                               indent=4, separators=(',', ': ')))
 
         out = sitk.ImageFileWriter()
-        out.SetFileName('out.nii')
+        out.SetFileName(fname+'-lungseg.nii')
         out.Execute(img)
 
     return 1
