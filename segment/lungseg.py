@@ -5,9 +5,10 @@ from __future__ import print_function
 import sys
 import argparse
 import SimpleITK as sitk  # pylint: disable=F0401
-import json
 import os
 import numpy as np
+
+import dicom2nifti
 
 
 def process_command_line(argv):
@@ -25,16 +26,6 @@ def process_command_line(argv):
     args = parser.parse_args(argv[1:])
 
     return args
-
-
-def load_dicom(dirname):
-    '''Build an sitk image out of a dicom directory.'''
-    reader = sitk.ImageSeriesReader()
-
-    dicom_names = reader.GetGDCMSeriesFileNames(dirname)
-    reader.SetFileNames(dicom_names)
-
-    return reader.Execute()
 
 
 def otsu(img):
@@ -195,23 +186,23 @@ def lungseg(img):
     return img
 
 
-def segment_lung_image(fullpath, img_load, nseeds):
+def get_seeds(img, nseeds):
+    seeds = {'numpy_indexed': distribute_seeds(img, nseeds)}
+    seeds['medpy_indexed'] = [(x, y, z) for (z, y, x) in
+                              seeds['numpy_indexed']]
+
+    return seeds
+
+
+def segment_lung_image(fullpath, img_load):
+
     basename = os.path.basename(fullpath)
     img = img_load(fullpath)
 
     img = lungseg(img)
 
-    seeds = {'numpy_indexed': distribute_seeds(img, nseeds)}
-    seeds['medpy_indexed'] = [(x, y, z) for (z, y, x) in
-                              seeds['numpy_indexed']]
 
-    with open(fullpath+".json", 'w') as f:
-        f.write(json.dumps(seeds, sort_keys=True,
-                separators=(',', ': ')))
-
-    out = sitk.ImageFileWriter()
-    out.SetFileName(fullpath+'-lungseg.nii')
-    out.Execute(img)
+    return seeds
 
 
 def main(argv=None):
@@ -220,7 +211,8 @@ def main(argv=None):
     args = process_command_line(argv)
 
     for dicomdir in args.dicomdirs:
-        segment_lung_image(os.path.abspath(dicomdir), load_dicom, args.nseeds)
+        segment_lung_image(os.path.abspath(dicomdir),
+                           dicom2nifiti.load_dicom, args.nseeds)
 
     return 1
 
