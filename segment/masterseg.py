@@ -9,6 +9,8 @@ import SimpleITK as sitk  # pylint: disable=F0401
 import numpy as np
 import lungseg
 
+import dicom2nifti
+
 
 def process_command_line(argv):
     '''Parse the command line and do a first-pass on processing them into a
@@ -18,7 +20,7 @@ def process_command_line(argv):
                                      ArgumentDefaultsHelpFormatter)
 
     parser.add_argument(
-        "--dicomdirs", nargs="+",
+        "images", nargs="+",
         help="The dicom directories to operate on.")
     parser.add_argument(
         "--nseeds", type=int, default=10,
@@ -29,7 +31,7 @@ def process_command_line(argv):
 
     args = parser.parse_args(argv[1:])
     args.media_root = os.path.abspath(args.media_root)
-    args.dicomdirs = [os.path.abspath(dicomdir) for dicomdir in args.dicomdirs]
+    args.images = [os.path.abspath(image) for image in args.images]
 
     return args
 
@@ -42,25 +44,6 @@ def segmentation_too_big(segmentation, organ, threshold=0.05):
     return seg_size > threshold*organ_size
 
 
-
-def convert_to_nii(dicom_in, nifti_dir):
-    '''Convert the given dicom directory (dicom_in) into a nifti formatted
-    image and place it in nifti_dir using an md5 hash of its contents.
-    Returns the absolute path of the output file'''
-    try:
-        os.makedirs(nifti_dir)
-    except OSError:
-        # no need to do anything if the directory already exists.
-        pass
-
-    sha = dicom_hash(dicom_in)
-
-    outname = os.path.join(nifti_dir, sha+".nii")
-    lungseg.dicom_to_nii(dicom_in, outname)
-
-    return sha
-
-
 def set_label(fname, label, labsep='-'):
     '''Set the label (a string addition of labsep + label) for this filename.
     '''
@@ -69,56 +52,63 @@ def set_label(fname, label, labsep='-'):
     return fname
 
 
-def seed_dep_seg(img, seed, seg_info, seed_name):
+def seed_dep_seg(img, seed):
     '''Run the seed-dependent segmentation for a particular image.'''
+
     (seed_dep_img, info) = sitkstrats.confidence_connected(img,
                                                            {'seed': seed})
-    seg_info['segmentation'] = info
-    seg_info['segmentation']['size'] = np.count_nonzero(
-        sitk.GetArrayFromImage(seed_dep_img))
+    info['size'] = np.count_nonzero(sitk.GetArrayFromImage(seed_dep_img))
 
-    return seed_dep_img
+    return (seed_dep_img, info)
 
 
-def run_img(sha, args):  # pylint: disable=C0111
+def mediadir_log((img, opts), mediadir, sha):
+
+    label = opts['algorithm']
+    out_fname = os.path.join(mediadir, label, sha+'.nii')
+
+    sitkstrats.write(img, out_fname)
+
+    opts['file'] = out_fname
+
+    return (img, opts)
+
+
+def conf_connect_strat(img, sha, seeds, root_dir):
+    info = {}
+
+    (seed_indep_img, indep_info) = mediadir_log(sitkstrats.curvature_flow(img),
+                                                root_dir, sha)
+
+    for seed in seeds:
+        seed_name = "-".join([str(k) for k in seed])
+        dep_root_dir = os.path.dirname(indep_info['file'])
+
+        (seed_img, seed_info) = seed_dep_seg(seed_indep_img, seed)
+        (seed_img, seed_info) = mediadir_log((seed_img, seed_info),
+                                             dep_root_dir, sha)
+
+        info[seed_name] = {'seed-independent': indep_info,
+                           'seed-dependent': seed_info,
+                           'seed': seed}
+
+    return info
+
+
+def run_img(img, sha, args, root_dir):  # pylint: disable=C0111
     '''Run the entire protocol on a particular image starting with sha hash'''
     img_info = {}
 
-    input_img = sitkstrats.read(os.path.join(args.media_root,
-                                             'init', sha+".nii"))
+    lung_img, lung_info = mediadir_log(sitkstrats.segment_lung(img),
+                                       root_dir, sha)
+    img_info['lungseg'] = lung_info
 
-    lung_img = lungseg.lungseg(input_img)
+    # seeds = lungseg.get_seeds(lung_img, args.nseeds)['medpy_indexed']
 
-    sitkstrats.write(lung_img,
-                     os.path.join(os.path.join(args.media_root, 'lungseg'),
-                                  sha+'.nii'))
-    seeds = lungseg.get_seeds(lung_img, args.nseeds)
+    seeds = [(171, 252, 96)]
 
-    seed_list = [(171, 252, 96)]
-    seed_list.extend(seeds['medpy_indexed'])
-
-    (seed_indep_img, info) = sitkstrats.curvature_flow(input_img)
-    img_info['seed-independant'] = info
-
-    sitkstrats.write(seed_indep_img,
-                     os.path.join(args.media_root, info['algorithm'],
-                                  sha+".nii"))
-
-    img_info['segmentations'] = {}
-
-    for seed in seed_list:
-        seed_name = "-".join([str(k) for k in seed])
-
-        seg_info = img_info['segmentations'].setdefault(
-            seed_name, {"seed-strategy": "random"})
-
-        seed_dep_img = seed_dep_seg(
-            seed_indep_img, seed, seg_info, seed_name)
-
-        out_f = os.path.join(args.media_root, info['algorithm'],
-                             set_label(sha+".nii", seed_name))
-        sitkstrats.write(seed_dep_img, out_f)
-        seg_info['file'] = out_f
+    img_info['conf_connect'] = conf_connect_strat(img, sha, seeds,
+                                                  root_dir)
 
     return img_info
 
@@ -141,11 +131,12 @@ def main(argv=None):
 
     run_info = {}
 
-    for dicomdir in args.dicomdirs:
-        nii_dir = os.path.join(args.media_root, 'init')
-        sha = convert_to_nii(os.path.abspath(dicomdir), nii_dir)
-        run_info[sha] = run_img(sha, args)
-        run_info[sha]['file'] = dicomdir
+    for img in args.images:
+        basename = os.path.basename(img)
+        sha = basename[:basename.rfind('.')]
+
+        run_info[sha] = run_img(sitkstrats.read(img), sha, args,
+                                args.media_root)
 
     with open("masterseg-run.json", 'w') as f:
         json_out = json.dumps(run_info, sort_keys=True,

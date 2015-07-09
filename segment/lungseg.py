@@ -173,7 +173,6 @@ def checkdist(seeds):
 
     raise NotImplementedError("Checkdist is under construction.")
 
-
 def lungseg(img):
     '''Segment lung.'''
     img = otsu(img)
@@ -212,7 +211,7 @@ def main(argv=None):
 
     for dicomdir in args.dicomdirs:
         segment_lung_image(os.path.abspath(dicomdir),
-                           dicom2nifiti.load_dicom, args.nseeds)
+                           dicom2nifiti.load_dicomsub, args.nseeds)
 
     return 1
 

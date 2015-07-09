@@ -15,6 +15,12 @@ def process_command_line(argv):
     parser.add_argument(
         "--dicomdirs", nargs="+",
         help="The dicom directories to operate on.")
+    parser.add_argument(
+        "--out_dir",
+        help="The directory to deposit the output files.")
+    parser.add_argument(
+        "--json", default=None,
+        help="Depost a JSON file with metadata at this path.")
 
     args = parser.parse_args(argv[1:])
 
@@ -42,14 +48,21 @@ def dicom_hash(dicom):
     return sha.hexdigest()
 
 
+def load_dicom(dicomdir):
+    '''Load the directory dicomdir as a sitk image.'''
+    reader = sitk.ImageSeriesReader()
+    reader.SetFileNames(dicom_files(dicomdir))
+
+    return reader.Execute()
+
+
 def dicom_to_nii(indir, output):
     '''Convert an input dicom directory to a nii file.'''
-    reader = sitk.ImageSeriesReader()
-    reader.SetFileNames(dicom_files(indir))
+    img = load_dicom(indir)
 
     out = sitk.ImageFileWriter()
     out.SetFileName(output)
-    out.Execute(reader.Execute())
+    out.Execute(img)
 
 
 def convert_to_nii(dicom_in, nifti_dir):
@@ -75,7 +88,21 @@ def main(argv=None):
     being run as a script. Otherwise, it's silent and just exposes methods.'''
     args = process_command_line(argv)
 
-    print args
+    info = {}
+
+    for dicomdir in args.dicomdirs:
+        sha = convert_to_nii(dicomdir, args.out_dir)
+
+        info[sha] = {}
+        info[sha]['file'] = os.path.abspath(dicomdir)
+        info[sha]['zslices'] = len(dicom_files(dicomdir))
+
+    if args.json is not None:
+        import json
+        with open(args.json, 'w') as f:
+            json_out = json.dumps(info, sort_keys=True,
+                                  indent=4, separators=(',', ': '))
+            f.write(json_out)
 
     return 1
 

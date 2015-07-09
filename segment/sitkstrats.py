@@ -4,6 +4,7 @@ import numpy as np
 import datetime
 import os
 
+import lungseg
 
 def write(img, fname):
     # ImageFileWriter fails if the directory doesn't exist. Create if req'd
@@ -45,6 +46,11 @@ def options_log(func):
 
 
 @options_log
+def segment_lung(img, options={}):
+    return (lungseg.lungseg(img), options)
+
+
+@options_log
 def curvature_flow(img_in, options={}):
     img = sitk.CurvatureFlow(
         img_in,
@@ -67,7 +73,10 @@ def confidence_connected(img_in, options):
     return (img, options)
 
 
+@options_log
 def aniso_gauss_sigmo(img_in, options):
+    '''Compute CurvatureAnisotropicDiffusion +
+    GradientMagnitudeRecursiveGaussian + Sigmoid featurization of the image.'''
 
     options['anisodiff'] = options.setdefault('anisodiff', {})
 
