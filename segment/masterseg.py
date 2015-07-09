@@ -142,7 +142,7 @@ def run_img(img, sha, nseeds, root_dir):  # pylint: disable=C0111
         dep_strat=sitkstrats.fastmarch_seeded_geocontour,
         indep_opts={"gauss": {'sigma': 1.5},
                     "sigmoid": {'alpha': -20,
-                                'beta': 75}})
+                                'beta': 50}})
 
     return img_info
 

@@ -145,13 +145,13 @@ def fastmarch_seeded_geocontour(img_in, options):
 
     seed_img = fastmarch.Execute(ones_img)
 
-    # FastMarchwon't output the right PixelType, so we have to cast.
+    # FastMarch won't output the right PixelType, so we have to cast.
     seed_img = sitk.Cast(seed_img, img_in.GetPixelID())
 
     # Generally speaking, you're supposed to subtract an amount from the
     # input level set, so that growing algorithm doesn't need to go as far
     img_shifted = sitk.GetImageFromArray(
-        sitk.GetArrayFromImage(seed_img) - options.setdefault('seed_shift', 4))
+        sitk.GetArrayFromImage(seed_img) - options.setdefault('seed_shift', 3))
     img_shifted.CopyInformation(seed_img)
     seed_img = img_shifted
 
@@ -159,19 +159,19 @@ def fastmarch_seeded_geocontour(img_in, options):
 
     geodesic = sitk.GeodesicActiveContourLevelSetImageFilter()
     geodesic.SetPropagationScaling(
-        options['geodesic'].setdefault('propagation_scaling', 1.0))
+        options['geodesic'].setdefault('propagation_scaling', 2.0))
     geodesic.SetNumberOfIterations(
-        options['geodesic'].setdefault('iterations', 1000))
+        options['geodesic'].setdefault('iterations', 300))
     geodesic.SetCurvatureScaling(
         options['geodesic'].setdefault('curvature_scaling', 1.0))
     geodesic.SetMaximumRMSError(
-        options['geodesic'].setdefault('max_rms_change', .0001))
+        options['geodesic'].setdefault('max_rms_change', .00000001))
 
     out = geodesic.Execute(seed_img, img_in)
 
     options['geodesic']['elapsed_iterations'] = geodesic.GetElapsedIterations()
     options['geodesic']['rms_change'] = geodesic.GetRMSChange()
 
-    out = sitk.BinaryThreshold(out, sitk.Minimum(out), sitk.Maximum(out))
+    out = sitk.BinaryThreshold(out, insideValue=0, outsideValue=1)
 
     return (out, options)
