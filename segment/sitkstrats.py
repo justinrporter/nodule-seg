@@ -25,6 +25,24 @@ def read(fname):
     return img_in
 
 
+def log_size(func):
+    '''A decorator that calculates the size of a segmentation.'''
+    def exec_func(img, opts=None):
+        '''Execute func from outer context and compute the size of the image
+        func produces.'''
+        if opts is None:
+            opts = {}
+
+        (img_out, opts_out) = func(img, opts)
+
+        opts['size'] = np.count_nonzero(  # pylint: disable=E1101
+            sitk.GetArrayFromImage(img_out))
+
+        return (img_out, opts_out)
+
+    return exec_func
+
+
 def options_log(func):
     '''A decorator that will modify the incoming options object to also include
     information about runtime and algorithm choice.'''
@@ -45,9 +63,16 @@ def options_log(func):
     return exec_func
 
 
+@log_size
 @options_log
-def segment_lung(img, options={}):
-    return (lungseg.lungseg(img), options)
+def segment_lung(img, options=None):
+    '''Produce a lung segmentation from an input image.'''
+    if options is None:
+        options = {}
+
+    img = lungseg.lungseg(img)
+
+    return (img, options)
 
 
 @options_log
@@ -60,13 +85,14 @@ def curvature_flow(img_in, options={}):
     return (img, options)
 
 
+@log_size
 @options_log
 def confidence_connected(img_in, options):
     img = sitk.ConfidenceConnected(
         img_in,
         [options['seed']],
         options.setdefault('iterations', 2),
-        options.setdefault('multiplier', 2.0),
+        options.setdefault('multiplier', 1.8),
         options.setdefault('neighborhood', 1),
         options.setdefault('replace_value', 1))
 
@@ -96,21 +122,23 @@ def aniso_gauss_sigmo(img_in, options):
         options['sigmoid']['alpha'],
         options['sigmoid']['beta'])
 
-    return img
+    return (img, options)
 
 
+@log_size
+@options_log
 def fastmarch_seeded_geocontour(img_in, options):
     '''Segment img_in using a GeodesicActiveContourLevelSetImageFilter with an
     inital level set built using FastMarchingImageFilter at options['seed']'''
 
     # The speed of wave propagation should be one everywhere, so we produce
     # an appropriately sized np array of all ones and convert it into an img
-    ones_img = sitk.GetImageFromArray(
-                    np.ones(sitk.GetArrayFromImage(img_in).shape))
+    ones_img = sitk.GetImageFromArray(np.ones(  # pylint: disable=E1101
+        sitk.GetArrayFromImage(img_in).shape))
     ones_img.CopyInformation(img_in)
 
     fastmarch = sitk.FastMarchingImageFilter()
-    fastmarch.SetStoppingValue(1000)
+    fastmarch.SetStoppingValue(max(img_in.GetSize())*0.5)
     seeds = sitk.VectorUIntList()
     seeds.append(options['seed'])
     fastmarch.SetTrialPoints(seeds)
@@ -120,23 +148,30 @@ def fastmarch_seeded_geocontour(img_in, options):
     # FastMarchwon't output the right PixelType, so we have to cast.
     seed_img = sitk.Cast(seed_img, img_in.GetPixelID())
 
-    img_shifted = sitk.GetImageFromArray(sitk.GetArrayFromImage(seed_img) - 1)
+    # Generally speaking, you're supposed to subtract an amount from the
+    # input level set, so that growing algorithm doesn't need to go as far
+    img_shifted = sitk.GetImageFromArray(
+        sitk.GetArrayFromImage(seed_img) - options.setdefault('seed_shift', 4))
     img_shifted.CopyInformation(seed_img)
     seed_img = img_shifted
 
+    options.setdefault('geodesic', {})
+
     geodesic = sitk.GeodesicActiveContourLevelSetImageFilter()
     geodesic.SetPropagationScaling(
-        options['geodesic'].get('propagation_scaling', 100.0))
+        options['geodesic'].setdefault('propagation_scaling', 1.0))
     geodesic.SetNumberOfIterations(
-        options['geodesic'].get('iterations', 300))
+        options['geodesic'].setdefault('iterations', 1000))
     geodesic.SetCurvatureScaling(
-        options['geodesic'].get('curvature_scaling', 1.0))
+        options['geodesic'].setdefault('curvature_scaling', 1.0))
     geodesic.SetMaximumRMSError(
-        options['geodesic'].get('error', .1))
+        options['geodesic'].setdefault('max_rms_change', .0001))
 
     out = geodesic.Execute(seed_img, img_in)
 
-    print geodesic.GetElapsedIterations(), "/", geodesic.GetNumberOfIterations()
-    print geodesic.GetRMSChange(), "/", geodesic.GetMaximumRMSError()
+    options['geodesic']['elapsed_iterations'] = geodesic.GetElapsedIterations()
+    options['geodesic']['rms_change'] = geodesic.GetRMSChange()
 
-    return out
+    out = sitk.BinaryThreshold(out, sitk.Minimum(out), sitk.Maximum(out))
+
+    return (out, options)

@@ -173,6 +173,7 @@ def checkdist(seeds):
 
     raise NotImplementedError("Checkdist is under construction.")
 
+
 def lungseg(img):
     '''Segment lung.'''
     img = otsu(img)
