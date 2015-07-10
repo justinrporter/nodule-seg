@@ -78,11 +78,11 @@ def strat_exec(img, sha, seeds, root_dir, indep_strat, dep_strat,
     try:
         optha = opthash(indep_opts)
         seed_indep_img = sitkstrats.read(os.path.join(root_dir,
-                                         'aniso_gauss_sigmo', sha + "-" +
-                                                      optha + ".nii"))
+                                         indep_strat.__name__,
+                                         sha + "-" + optha + ".nii"))
         indep_info = indep_opts
         indep_info['file'] = os.path.join(root_dir,
-                                          'aniso_gauss_sigmo',
+                                          indep_strat.__name__,
                                           sha + "-" + optha + ".nii")
         print "loaded indep_img"
     except RuntimeError:
@@ -109,10 +109,6 @@ def strat_exec(img, sha, seeds, root_dir, indep_strat, dep_strat,
                            'seed-dependent': seed_info,
                            'seed': seed}
 
-    print info[seed_name]['seed-dependent']['size'] / 17825792.0
-    print info[seed_name]['seed-dependent']['geodesic']['elapsed_iterations']
-    print info[seed_name]['seed-dependent']['geodesic']['rms_change']
-
     return info
 
 
@@ -126,23 +122,62 @@ def run_img(img, sha, nseeds, root_dir):  # pylint: disable=C0111
 
     img_info['lungseg'] = lung_info
 
+    segstrat_info = img_info.setdefault('noduleseg', {})
+
     print nseeds
     # seeds = lungseg.get_seeds(lung_img, nseeds)['medpy_indexed']
 
     # seeds = [(171, 252, 96)]
     seeds = [(350, 296, 34)]
 
-    # img_info['conf_connect'] = strat_exec(
-    #     img, sha, seeds, root_dir,
-    #     sitkstrats.curvature_flow, sitkstrats.confidence_connected)
+    connect_dict = strat_exec(
+        img, sha, seeds, root_dir,
+        indep_strat=sitkstrats.curvature_flow,
+        dep_strat=sitkstrats.confidence_connected,
+        indep_opts={'curvature_flow': {'timestep': 0.01,
+                                       'iterations': 25}},
+        dep_opts={'conf_connect': {'iterations': 2,
+                                   'multiplier': 1.5,
+                                   'neighborhood': 1},
+                  'dialate': {'radius': 1}})
 
-    img_info['geodesic'] = strat_exec(
+    geostrat_dict = strat_exec(
         img, sha, seeds, root_dir,
         indep_strat=sitkstrats.aniso_gauss_sigmo,
         dep_strat=sitkstrats.fastmarch_seeded_geocontour,
-        indep_opts={"gauss": {'sigma': 1.5},
+        indep_opts={"anisodiff": {'timestep': 0.01,
+                                  'conductance': 9.0,
+                                  'iterations': 50},
+                    "gauss": {'sigma': 1.5},
                     "sigmoid": {'alpha': -20,
-                                'beta': 50}})
+                                'beta': 50}},
+        dep_opts={"geodesic": {"propagation_scaling": 2.0,
+                               "iterations": 300,
+                               "curvature_scaling": 1.0,
+                               "max_rms_change": 1e-7},
+                  "seed_shift": 3})
+
+    waterstrat_dict = strat_exec(
+        img, sha, seeds, root_dir,
+        indep_strat=sitkstrats.aniso_gauss_watershed,
+        dep_strat=sitkstrats.isolate_watershed,
+        indep_opts={"anisodiff": {'timestep': 0.01,
+                                  'conductance': 9.0,
+                                  'iterations': 50},
+                    "gauss": {'sigma': 1.5},
+                    "watershed": {"level": 4}})
+
+    for seed in seeds:
+        seed_name = "-".join([str(s) for s in seed])
+        segstrat_info.setdefault(seed_name,
+                                 {'geodesic': geostrat_dict[seed_name],
+                                  'watershed': waterstrat_dict[seed_name],
+                                  'conf_connect': connect_dict[seed_name]})
+
+        segmentation_files = [strat['seed-dependent']['file']
+                              for strat in segstrat_info[seed_name].values()]
+
+        print segmentation_files
 
     return img_info
 
@@ -160,7 +195,7 @@ class DateTimeEncoder(json.JSONEncoder):  # pylint: disable=C0111
 
 def main(argv=None):
     '''Run the driver script for this module. This code only runs if we're
-    being run as a script. Otherwise, it's sislent and just exposes methods.'''
+    being run as a script. Otherwise, it's silent and just exposes methods.'''
     args = process_command_line(argv)
 
     run_info = {}

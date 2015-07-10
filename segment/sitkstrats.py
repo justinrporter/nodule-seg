@@ -6,6 +6,7 @@ import os
 
 import lungseg
 
+
 def write(img, fname):
     # ImageFileWriter fails if the directory doesn't exist. Create if req'd
     try:
@@ -20,9 +21,9 @@ def write(img, fname):
 
 def read(fname):
     img_in = sitk.ReadImage(fname)
-    img_in = sitk.Cast(img_in, sitk.sitkFloat32)
+    img = sitk.Cast(img_in, sitk.sitkFloat32)
 
-    return img_in
+    return img
 
 
 def log_size(func):
@@ -40,6 +41,9 @@ def log_size(func):
 
         return (img_out, opts_out)
 
+    # If we don't do this, we lose the ability to introspect at higher levels.
+    exec_func.__name__ = func.__name__
+
     return exec_func
 
 
@@ -53,14 +57,33 @@ def options_log(func):
 
         start = datetime.datetime.now()
 
-        (img, opts) = func(img, opts)
+        (img, out_opts) = func(img, opts)
 
-        opts['algorithm'] = func.__name__
-        opts['time'] = datetime.datetime.now() - start
+        out_opts['algorithm'] = func.__name__
+        out_opts['time'] = datetime.datetime.now() - start
 
-        return (img, opts)
+        return (img, out_opts)
+
+    # If we don't do this, we lose the ability to introspect at higher levels.
+    exec_func.__name__ = func.__name__
 
     return exec_func
+
+
+def aniso_gauss(img_in, options):
+
+    img = sitk.CurvatureAnisotropicDiffusion(
+        img_in,
+        timeStep=options['anisodiff']['timestep'],
+        conductanceParameter=options['anisodiff']['conductance'],
+        # options['anisodiff'].setdefault('scaling_interval', 1),
+        numberOfIterations=options['anisodiff']['iterations'])
+
+    img = sitk.GradientMagnitudeRecursiveGaussian(
+        img,
+        options['gauss']['sigma'])
+
+    return (img, options)
 
 
 @log_size
@@ -76,11 +99,11 @@ def segment_lung(img, options=None):
 
 
 @options_log
-def curvature_flow(img_in, options={}):
+def curvature_flow(img_in, options):
     img = sitk.CurvatureFlow(
         img_in,
-        options.setdefault('timestep', 0.01),
-        options.setdefault('iterations', 25))
+        options['curvature_flow']['timestep'],
+        options['curvature_flow']['iterations'])
 
     return (img, options)
 
@@ -91,31 +114,59 @@ def confidence_connected(img_in, options):
     img = sitk.ConfidenceConnected(
         img_in,
         [options['seed']],
-        options.setdefault('iterations', 2),
-        options.setdefault('multiplier', 1.8),
-        options.setdefault('neighborhood', 1),
-        options.setdefault('replace_value', 1))
+        options['conf_connect']['iterations'],
+        options['conf_connect']['multiplier'],
+        options['conf_connect']['neighborhood'])
+
+    img = sitk.BinaryDilate(
+        img,
+        options['dialate']['radius'],
+        sitk.BinaryDilateImageFilter.Ball)
 
     return (img, options)
 
 
 @options_log
-def aniso_gauss_sigmo(img_in, options):
+def aniso_gauss_watershed(img_in, options_in):
     '''Compute CurvatureAnisotropicDiffusion +
     GradientMagnitudeRecursiveGaussian + Sigmoid featurization of the image.'''
 
-    options['anisodiff'] = options.setdefault('anisodiff', {})
+    (img, options) = aniso_gauss(img_in, options_in)
 
-    img = sitk.CurvatureAnisotropicDiffusion(
-        img_in,
-        options['anisodiff'].setdefault('timestep', 0.01),
-        options['anisodiff'].setdefault('conductance', 9.0),
-        options['anisodiff'].setdefault('scaling_interval', 1),
-        options['anisodiff'].setdefault('iterations', 50))
-
-    img = sitk.GradientMagnitudeRecursiveGaussian(
+    img = sitk.MorphologicalWatershed(
         img,
-        options['gauss']['sigma'])
+        level=options['watershed']['level'],
+        markWatershedLine=True,
+        fullyConnected=False)
+
+    return (img, options)
+
+
+@log_size
+@options_log
+def isolate_watershed(img_in, options):
+    '''Isolate a particular one of the watershed segmentations.'''
+    seed = options['seed']
+
+    arr = sitk.GetArrayFromImage(img_in)
+
+    label = arr[seed[2], seed[1], seed[0]]
+    print label
+
+    lab_arr = np.array(arr == label, dtype='float32')  # pylint: disable=E1101
+
+    out_img = sitk.GetImageFromArray(lab_arr)
+    out_img.CopyInformation(img_in)
+
+    return (out_img, options)
+
+
+@options_log
+def aniso_gauss_sigmo(img_in, opts_in):
+    '''Compute CurvatureAnisotropicDiffusion +
+    GradientMagnitudeRecursiveGaussian + Sigmoid featurization of the image.'''
+
+    (img, options) = aniso_gauss(img_in, opts_in)
 
     img = sitk.Sigmoid(
         img,
@@ -138,7 +189,10 @@ def fastmarch_seeded_geocontour(img_in, options):
     ones_img.CopyInformation(img_in)
 
     fastmarch = sitk.FastMarchingImageFilter()
-    fastmarch.SetStoppingValue(max(img_in.GetSize())*0.5)
+
+    # to save time, we limit the distances we calculate to a quarter of the
+    # image size away (i.e. a region no more than half the image in diameter).
+    fastmarch.SetStoppingValue(max(img_in.GetSize())*0.25)
     seeds = sitk.VectorUIntList()
     seeds.append(options['seed'])
     fastmarch.SetTrialPoints(seeds)
@@ -151,21 +205,19 @@ def fastmarch_seeded_geocontour(img_in, options):
     # Generally speaking, you're supposed to subtract an amount from the
     # input level set, so that growing algorithm doesn't need to go as far
     img_shifted = sitk.GetImageFromArray(
-        sitk.GetArrayFromImage(seed_img) - options.setdefault('seed_shift', 3))
+        sitk.GetArrayFromImage(seed_img) - options['seed_shift'])
     img_shifted.CopyInformation(seed_img)
     seed_img = img_shifted
 
-    options.setdefault('geodesic', {})
-
     geodesic = sitk.GeodesicActiveContourLevelSetImageFilter()
     geodesic.SetPropagationScaling(
-        options['geodesic'].setdefault('propagation_scaling', 2.0))
+        options['geodesic']['propagation_scaling'])
     geodesic.SetNumberOfIterations(
-        options['geodesic'].setdefault('iterations', 300))
+        options['geodesic']['iterations'])
     geodesic.SetCurvatureScaling(
-        options['geodesic'].setdefault('curvature_scaling', 1.0))
+        options['geodesic']['curvature_scaling'])
     geodesic.SetMaximumRMSError(
-        options['geodesic'].setdefault('max_rms_change', .00000001))
+        options['geodesic']['max_rms_change'])
 
     out = geodesic.Execute(seed_img, img_in)
 
