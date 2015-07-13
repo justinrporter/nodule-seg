@@ -143,22 +143,6 @@ def isolate_not_biggest(img):
     return not_big
 
 
-def distribute_seeds(img, n_pts=100):
-    '''Randomly distribute n seeds amongst all points where img != 0'''
-    import random
-
-    array = sitk.GetArrayFromImage(img)
-
-    seeds = list()
-    while len(seeds) < n_pts:
-        (z, y, x) = [random.randrange(0, i) for i in array.shape]
-
-        if array[z, y, x] != 0 and (z, y, x) not in seeds:
-            seeds.append((z, y, x))
-
-    return seeds
-
-
 def checkdist(seeds):
     '''UNDER CONSTRUCTION'''
 
@@ -184,14 +168,6 @@ def lungseg(img):
     img = isolate_not_biggest(img)
 
     return img
-
-
-def get_seeds(img, nseeds):
-    seeds = {'numpy_indexed': distribute_seeds(img, nseeds)}
-    seeds['medpy_indexed'] = [(x, y, z) for (z, y, x) in
-                              seeds['numpy_indexed']]
-
-    return seeds
 
 
 def segment_lung_image(fullpath, img_load):

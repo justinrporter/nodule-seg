@@ -70,7 +70,26 @@ def options_log(func):
     return exec_func
 
 
+def distribute_seeds(img, n_pts=100):
+    '''Randomly distribute n seeds amongst all points where img != 0'''
+    import random
+
+    array = sitk.GetArrayFromImage(img)
+
+    seeds = list()
+    while len(seeds) < n_pts:
+        (z, y, x) = [random.randrange(0, i) for i in array.shape]
+
+        if array[z, y, x] != 0 and (z, y, x) not in seeds:
+            seeds.append((x, y, z))
+
+    return seeds
+
+
 def aniso_gauss(img_in, options):
+    '''CurvatureAnisotropicDiffusion + GradientMagnitudeRecursiveGaussian is a
+    a common featurization strategy. Compute these for consumption by other
+    sitkstrat functions.'''
 
     img = sitk.CurvatureAnisotropicDiffusion(
         img_in,
@@ -84,6 +103,34 @@ def aniso_gauss(img_in, options):
         options['gauss']['sigma'])
 
     return (img, options)
+
+
+@log_size
+@options_log
+def segmentation_union(imgs, options):
+    '''Compute a consensus segmentation amongst a small set of segmentations'''
+    # pylint: disable=E1101
+    # Sadly, images and arrays have a different coordinate system (z, y, x) vs
+    # (x, y, z) so it's safest just to convert here. Don't worry, it's fast.
+    incl_count = np.zeros(sitk.GetArrayFromImage(imgs[0]).shape)
+
+    # This would be memory-expensive for large numbers of images, but it's only
+    # a couple so ith's hopefully ok.
+    for img in [sitk.GetArrayFromImage(i) for i in imgs]:
+        assert img.shape == incl_count.shape
+        incl_count += (img != 0)
+
+    # sitk is pretty particular about the datatypes that come in to
+    # GetImageFromArray, and the default output from the following (bool?)
+    # isn't acceptable apparently
+    consensus = np.array(incl_count >= options['threshold']*len(imgs),
+                         dtype='uint8')
+
+    consensus = sitk.GetImageFromArray(consensus)
+    consensus.CopyInformation(imgs[0])
+    consensus = sitk.Cast(consensus, sitk.sitkUInt8)
+
+    return (consensus, options)
 
 
 @log_size
@@ -151,7 +198,6 @@ def isolate_watershed(img_in, options):
     arr = sitk.GetArrayFromImage(img_in)
 
     label = arr[seed[2], seed[1], seed[0]]
-    print label
 
     lab_arr = np.array(arr == label, dtype='float32')  # pylint: disable=E1101
 

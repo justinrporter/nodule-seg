@@ -52,10 +52,10 @@ def opthash(options):
 def mediadir_log(func, (in_img, in_opts), mediadir, sha):
     '''Write the input file in the appropriate directory using its sha'''
     optha = opthash(in_opts)
+    label = func.__name__
 
     (img, opts) = func(in_img, in_opts)
 
-    label = opts['algorithm']
     out_fname = os.path.join(mediadir, label, sha+"-"+optha+'.nii')
 
     sitkstrats.write(img, out_fname)
@@ -124,11 +124,10 @@ def run_img(img, sha, nseeds, root_dir):  # pylint: disable=C0111
 
     segstrat_info = img_info.setdefault('noduleseg', {})
 
-    print nseeds
-    # seeds = lungseg.get_seeds(lung_img, nseeds)['medpy_indexed']
+    seeds = sitkstrats.distribute_seeds(lung_img, nseeds)
 
     # seeds = [(171, 252, 96)]
-    seeds = [(350, 296, 34)]
+    # seeds = [(350, 296, 34)]
 
     connect_dict = strat_exec(
         img, sha, seeds, root_dir,
@@ -174,10 +173,20 @@ def run_img(img, sha, nseeds, root_dir):  # pylint: disable=C0111
                                   'watershed': waterstrat_dict[seed_name],
                                   'conf_connect': connect_dict[seed_name]})
 
-        segmentation_files = [strat['seed-dependent']['file']
-                              for strat in segstrat_info[seed_name].values()]
+        seg_files = [strat['seed-dependent']['file']
+                     for strat in segstrat_info[seed_name].values()]
 
-        print segmentation_files
+        segs = [sitkstrats.read(fname) for fname in seg_files]
+
+        # pylint: disable=W0612
+        (consensus, opts) = mediadir_log(
+            sitkstrats.segmentation_union,
+            (segs, {'threshold': 2.0/3.0,
+                    'files': segs}),
+            root_dir,
+            sha)
+
+        segstrat_info[seed_name]['consensus'] = opts
 
     return img_info
 
@@ -209,7 +218,7 @@ def main(argv=None):
 
     with open("masterseg-run.json", 'w') as f:
         json_out = json.dumps(run_info, sort_keys=True,
-                              indent=4, separators=(',', ': '),
+                              indent=2, separators=(',', ': '),
                               cls=DateTimeEncoder)
         f.write(json_out)
     return 1
