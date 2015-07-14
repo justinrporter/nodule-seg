@@ -4,6 +4,9 @@ import os
 import datetime
 import json
 
+import SimpleITK as sitk
+import numpy as np
+
 import sitkstrats
 
 
@@ -23,6 +26,9 @@ def process_command_line(argv):
     parser.add_argument(
         '--media_root', default="media_root/",
         help="The directory to store temporary and intermediate media output")
+    parser.add_argument(
+        '--profile', default=False, action='store_true',
+        help="Run cProfile on script execution.")
 
     args = parser.parse_args(argv[1:])
     args.media_root = os.path.abspath(args.media_root)
@@ -65,51 +71,133 @@ def mediadir_log(func, (in_img, in_opts), mediadir, sha):
     return (img, opts)
 
 
-def strat_exec(img, sha, seeds, root_dir, indep_strat, dep_strat,
-               indep_opts=None, dep_opts=None):
-    '''Execute the given strategy with the given options'''
-    if indep_opts is None:
-        indep_opts = {}
-    if dep_opts is None:
-        dep_opts = {}
+def configure_strats():
+    '''
+    Construct a dictionary that represents the configuration of all
+    segmentation strategies to be used in the script using command line
+    arguments. CURRENTLY ACCEPTS NO INPUT.
+    '''
 
-    info = {}
+    strats = {
+        'confidence_connected': {
+            'seed-independent': {
+                'strategy': sitkstrats.curvature_flow,
+                'opts': {'curvature_flow': {
+                            'timestep': 0.01,
+                            'iterations': 25}}
+                },
+            'seed-dependent': {
+                'strategy': sitkstrats.confidence_connected,
+                'opts': {'conf_connect': {'iterations': 2,
+                                          'multiplier': 1.5,
+                                          'neighborhood': 1},
+                         'dialate': {'radius': 1}}
+                },
+        },
+        'geodesic': {
+            'seed-independent': {
+                'strategy': sitkstrats.aniso_gauss_sigmo,
+                'opts': {"anisodiff": {'timestep': 0.01,
+                                       'conductance': 9.0,
+                                       'iterations': 50},
+                         "gauss": {'sigma': 1.5},
+                         "sigmoid": {'alpha': -20,
+                                     'beta': 50}},
+            },
+            'seed-dependent': {
+                'strategy': sitkstrats.fastmarch_seeded_geocontour,
+                'opts': {"geodesic": {"propagation_scaling": 2.0,
+                                      "iterations": 300,
+                                      "curvature_scaling": 1.0,
+                                      "max_rms_change": 1e-7},
+                         "seed_shift": 3}
+            }
+        },
+        'watershed': {
+            'seed-independent': {
+                'strategy': sitkstrats.aniso_gauss_watershed,
+                'opts': {"anisodiff": {'timestep': 0.01,
+                                       'conductance': 9.0,
+                                       'iterations': 50},
+                         "gauss": {'sigma': 1.5},
+                         "watershed": {"level": 4}}
+            },
+            'seed-dependent': {
+                'strategy': sitkstrats.isolate_watershed,
+                'opts': {}
+            }
+        }
+    }
 
-    try:
-        optha = opthash(indep_opts)
-        seed_indep_img = sitkstrats.read(os.path.join(root_dir,
-                                         indep_strat.__name__,
-                                         sha + "-" + optha + ".nii"))
-        indep_info = indep_opts
-        indep_info['file'] = os.path.join(root_dir,
-                                          indep_strat.__name__,
-                                          sha + "-" + optha + ".nii")
-        print "loaded indep_img"
-    except RuntimeError:
-        print "building "
-        (seed_indep_img, indep_info) = mediadir_log(indep_strat,
-                                                    (img, indep_opts),
-                                                    root_dir, sha)
-        print "built in", indep_info['time']
+    return strats
+
+
+def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size):
+
+    # pick an image, basically at random, from imgs to initialize an array
+    # that tracks which areas of the image have already been segmented out
+    segmented = np.zeros(sitk.GetArrayFromImage(  # pylint: disable=E1101
+        imgs.values()[0]).shape)
+
+    out_info = {}
 
     for seed in seeds:
-        seed_name = "-".join([str(k) for k in seed])
+        try:
+            if segmented[seed[2], seed[1], seed[0]] >= 2:
+                print "ALREADY SEGMENTED", seed
+        except IndexError as e:
+            print seed, segmented.shape
+            raise e
 
-        dep_opts = dict(dep_opts)
-        dep_opts['seed'] = seed
+        # We want to hold onto images and info dicts for each segmentation,
+        # and we want to automagically store the info we put in seed_info into
+        # out_info for returning later => use setdefault
+        out_imgs = {}
+        seed_info = out_info.setdefault("-".join([str(k) for k in seed]), {})
 
-        # pylint: disable=W0612
-        (seed_img, seed_info) = mediadir_log(dep_strat,
-                                             (seed_indep_img, dep_opts),
-                                             root_dir, sha)
+        # for each strategy we want to segment with, get its name and the
+        # function that executes it.
+        for (sname, strat) in [(strnam, segstrats[strnam]['seed-dependent'])
+                               for strnam in segstrats]:
+            print sname
 
-        seed_info['input_file'] = indep_info['file']
+            img_in = imgs[sname]
 
-        info[seed_name] = {'seed-independent': indep_info,
-                           'seed-dependent': seed_info,
-                           'seed': seed}
+            opts = dict(strat['opts'])
+            opts['seed'] = seed
 
-    return info
+            (tmp_img, tmp_info) = mediadir_log(strat['strategy'],
+                                               (img_in, opts),
+                                               root_dir,
+                                               sha)
+
+            out_imgs[sname] = tmp_img
+            seed_info[sname] = tmp_info
+
+        # we need the names of the input files so that our options hash is
+        # dependent on the input images.
+        consensus_input_files = [s['file'] for s in seed_info.values()]
+
+        try:
+            (consensus, consensus_info) = mediadir_log(
+                sitkstrats.segmentation_union,
+                (out_imgs.values(),
+                 {'threshold': 2.0/3.0,
+                  'max_size': lung_size * 0.5,
+                  'min_size': lung_size * 0,
+                  'input_files': consensus_input_files}),
+                root_dir,
+                sha)
+        except RuntimeWarning as w:
+            print w
+            print "Failure on", seed
+            seed_info['consensus'] = "failure"
+
+        segmented += sitk.GetArrayFromImage(consensus)
+
+        seed_info['consensus'] = consensus_info
+
+    return out_info
 
 
 def run_img(img, sha, nseeds, root_dir):  # pylint: disable=C0111
@@ -119,74 +207,52 @@ def run_img(img, sha, nseeds, root_dir):  # pylint: disable=C0111
     lung_img, lung_info = mediadir_log(sitkstrats.segment_lung,
                                        (img, {}),
                                        root_dir, sha)
-
     img_info['lungseg'] = lung_info
 
-    segstrat_info = img_info.setdefault('noduleseg', {})
+    segstrats = configure_strats()
+    seed_indep_imgs = {}
+    seed_indep_info = {}
+
+    for (sname, strat) in [(strnam, segstrats[strnam]['seed-independent'])
+                           for strnam in segstrats]:
+
+        try:
+            optha = opthash(strat['opts'])
+            fname = os.path.join(root_dir, strat['strategy'].__name__,
+                                 sha + "-" + optha + ".nii")
+            tmp_img = sitkstrats.read(fname)
+            tmp_info = strat['opts']
+            tmp_info['file'] = os.path.join(fname)
+            print "loaded indep_img"
+        except RuntimeError:
+            print "building "
+            (tmp_img, tmp_info) = mediadir_log(strat['strategy'],
+                                               (img, strat['opts']),
+                                               root_dir,
+                                               sha)
+            print "built in", tmp_info['time']
+
+        seed_indep_imgs[sname] = tmp_img
+        seed_indep_info[sname] = tmp_info
 
     seeds = sitkstrats.distribute_seeds(lung_img, nseeds)
 
-    # seeds = [(171, 252, 96)]
-    # seeds = [(350, 296, 34)]
+    # seeds.append((171, 252, 96))
+    seeds.append((350, 296, 34))
 
-    connect_dict = strat_exec(
-        img, sha, seeds, root_dir,
-        indep_strat=sitkstrats.curvature_flow,
-        dep_strat=sitkstrats.confidence_connected,
-        indep_opts={'curvature_flow': {'timestep': 0.01,
-                                       'iterations': 25}},
-        dep_opts={'conf_connect': {'iterations': 2,
-                                   'multiplier': 1.5,
-                                   'neighborhood': 1},
-                  'dialate': {'radius': 1}})
+    seg_info = seeddep(seed_indep_imgs, seeds,
+                       root_dir, sha, segstrats, img_info['lungseg']['size'])
 
-    geostrat_dict = strat_exec(
-        img, sha, seeds, root_dir,
-        indep_strat=sitkstrats.aniso_gauss_sigmo,
-        dep_strat=sitkstrats.fastmarch_seeded_geocontour,
-        indep_opts={"anisodiff": {'timestep': 0.01,
-                                  'conductance': 9.0,
-                                  'iterations': 50},
-                    "gauss": {'sigma': 1.5},
-                    "sigmoid": {'alpha': -20,
-                                'beta': 50}},
-        dep_opts={"geodesic": {"propagation_scaling": 2.0,
-                               "iterations": 300,
-                               "curvature_scaling": 1.0,
-                               "max_rms_change": 1e-7},
-                  "seed_shift": 3})
+    img_info['noduleseg'] = {}
+    for seed in seg_info:
+        for segstrat in seg_info[seed]:
+            combined_info = {'seed-dependent': seg_info[seed][segstrat]}
 
-    waterstrat_dict = strat_exec(
-        img, sha, seeds, root_dir,
-        indep_strat=sitkstrats.aniso_gauss_watershed,
-        dep_strat=sitkstrats.isolate_watershed,
-        indep_opts={"anisodiff": {'timestep': 0.01,
-                                  'conductance': 9.0,
-                                  'iterations': 50},
-                    "gauss": {'sigma': 1.5},
-                    "watershed": {"level": 4}})
+            if segstrat in seed_indep_info:
+                combined_info['seed-independent'] = seed_indep_info[segstrat]
 
-    for seed in seeds:
-        seed_name = "-".join([str(s) for s in seed])
-        segstrat_info.setdefault(seed_name,
-                                 {'geodesic': geostrat_dict[seed_name],
-                                  'watershed': waterstrat_dict[seed_name],
-                                  'conf_connect': connect_dict[seed_name]})
-
-        seg_files = [strat['seed-dependent']['file']
-                     for strat in segstrat_info[seed_name].values()]
-
-        segs = [sitkstrats.read(fname) for fname in seg_files]
-
-        # pylint: disable=W0612
-        (consensus, opts) = mediadir_log(
-            sitkstrats.segmentation_union,
-            (segs, {'threshold': 2.0/3.0,
-                    'files': segs}),
-            root_dir,
-            sha)
-
-        segstrat_info[seed_name]['consensus'] = opts
+            img_info['noduleseg'].setdefault(
+                seed, {})[segstrat] = combined_info
 
     return img_info
 
@@ -217,12 +283,23 @@ def main(argv=None):
                                 args.nseeds, args.media_root)
 
     with open("masterseg-run.json", 'w') as f:
-        json_out = json.dumps(run_info, sort_keys=True,
-                              indent=2, separators=(',', ': '),
-                              cls=DateTimeEncoder)
+        try:
+            json_out = json.dumps(run_info, sort_keys=True,
+                                  indent=2, separators=(',', ': '),
+                                  cls=DateTimeEncoder)
+        except TypeError as e:
+            print "Error encountered, dumping info"
+            print run_info
+            raise e
+
         f.write(json_out)
     return 1
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv))
+    if "--profile" in sys.argv:
+        import cProfile
+        sys.exit(cProfile.runctx("main(sys.argv)", globals(),
+                                 {"sys.argv": sys.argv}))
+    else:
+        sys.exit(main(sys.argv))

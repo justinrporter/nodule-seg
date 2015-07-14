@@ -26,6 +26,10 @@ def read(fname):
     return img
 
 
+def to_array(img):
+    return sitk.GetImageFromArray(img)
+
+
 def log_size(func):
     '''A decorator that calculates the size of a segmentation.'''
     def exec_func(img, opts=None):
@@ -113,17 +117,30 @@ def segmentation_union(imgs, options):
     # Sadly, images and arrays have a different coordinate system (z, y, x) vs
     # (x, y, z) so it's safest just to convert here. Don't worry, it's fast.
     incl_count = np.zeros(sitk.GetArrayFromImage(imgs[0]).shape)
+    n_img = 0
 
     # This would be memory-expensive for large numbers of images, but it's only
     # a couple so ith's hopefully ok.
     for img in [sitk.GetArrayFromImage(i) for i in imgs]:
         assert img.shape == incl_count.shape
-        incl_count += (img != 0)
+
+        img_size = np.count_nonzero(img)
+        if img_size < options['max_size'] and \
+           img_size > options['min_size']:
+            n_img += 1
+            incl_count += (img != 0)
+
+    # store the number of images that passed QC
+    options['n_imgs'] = n_img
+
+    if n_img == 0:
+        raise RuntimeWarning("No images satisifed image size thresholds" +
+                             str((options['min_size'], options['max_size'])))
 
     # sitk is pretty particular about the datatypes that come in to
     # GetImageFromArray, and the default output from the following (bool?)
     # isn't acceptable apparently
-    consensus = np.array(incl_count >= options['threshold']*len(imgs),
+    consensus = np.array(incl_count >= options['threshold'] * n_img,
                          dtype='uint8')
 
     consensus = sitk.GetImageFromArray(consensus)
@@ -198,6 +215,7 @@ def isolate_watershed(img_in, options):
     arr = sitk.GetArrayFromImage(img_in)
 
     label = arr[seed[2], seed[1], seed[0]]
+    options['label'] = int(label)
 
     lab_arr = np.array(arr == label, dtype='float32')  # pylint: disable=E1101
 
