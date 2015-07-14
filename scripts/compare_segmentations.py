@@ -1,5 +1,6 @@
 import sys
 import argparse
+import os
 
 
 def process_command_line(argv):
@@ -15,7 +16,15 @@ def process_command_line(argv):
 
     args = parser.parse_args(argv[1:])
 
-    assert len(args.automatic) == len(args.manual)
+    if len(args.automatic) == 1:
+        args.automatic = args.automatic*len(args.manual)
+    elif len(args.manual) == 1:
+        args.manual = args.manual*len(args.automatic)
+    else:
+        assert len(args.automatic) == len(args.manual)
+
+    for file_list in [args.manual, args.automatic]:
+        file_list = [os.path.abspath(f) for f in file_list]
 
     args.files = zip(args.automatic, args.manual)
 
