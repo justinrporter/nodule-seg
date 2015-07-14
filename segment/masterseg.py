@@ -145,6 +145,7 @@ def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size):
         try:
             if segmented[seed[2], seed[1], seed[0]] >= 2:
                 print "ALREADY SEGMENTED", seed
+                continue
         except IndexError as e:
             print seed, segmented.shape
             raise e
@@ -159,7 +160,7 @@ def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size):
         # function that executes it.
         for (sname, strat) in [(strnam, segstrats[strnam]['seed-dependent'])
                                for strnam in segstrats]:
-            print sname
+            # print sname
 
             img_in = imgs[sname]
 
@@ -190,7 +191,7 @@ def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size):
                 sha)
         except RuntimeWarning as w:
             print w
-            print "Failure on", seed
+            print "Failure on", seed, "; sizes"
             seed_info['consensus'] = "failure"
 
         segmented += sitk.GetArrayFromImage(consensus)
@@ -238,7 +239,7 @@ def run_img(img, sha, nseeds, root_dir):  # pylint: disable=C0111
     seeds = sitkstrats.distribute_seeds(lung_img, nseeds)
 
     # seeds.append((171, 252, 96))
-    seeds.append((350, 296, 34))
+    # seeds.append((350, 296, 34))
 
     seg_info = seeddep(seed_indep_imgs, seeds,
                        root_dir, sha, segstrats, img_info['lungseg']['size'])
