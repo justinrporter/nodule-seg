@@ -120,7 +120,7 @@ def configure_strats():
                                        'conductance': 9.0,
                                        'iterations': 50},
                          "gauss": {'sigma': 1.5},
-                         "watershed": {"level": 4}}
+                         "watershed": {"level": 5}}
             },
             'seed-dependent': {
                 'strategy': sitkstrats.isolate_watershed,
@@ -142,9 +142,12 @@ def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size):
     out_info = {}
 
     for seed in seeds:
+        sys.stdout.write("Segmenting "+str(seed)+"... ")
+        sys.stdout.flush()
+
         try:
             if segmented[seed[2], seed[1], seed[0]] >= 2:
-                print "ALREADY SEGMENTED", seed
+                print "ALREADY SEGMENTED"
                 continue
         except IndexError as e:
             print seed, segmented.shape
@@ -160,7 +163,8 @@ def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size):
         # function that executes it.
         for (sname, strat) in [(strnam, segstrats[strnam]['seed-dependent'])
                                for strnam in segstrats]:
-            # print sname
+            sys.stdout.write(sname+"... ")
+            sys.stdout.flush()
 
             img_in = imgs[sname]
 
@@ -174,6 +178,7 @@ def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size):
 
             out_imgs[sname] = tmp_img
             seed_info[sname] = tmp_info
+        sys.stdout.write("consensus... ")
 
         # we need the names of the input files so that our options hash is
         # dependent on the input images.
@@ -193,6 +198,9 @@ def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size):
             print w
             print "Failure on", seed, "; sizes"
             seed_info['consensus'] = "failure"
+            continue
+
+        print ""
 
         segmented += sitk.GetArrayFromImage(consensus)
 
@@ -236,16 +244,25 @@ def run_img(img, sha, nseeds, root_dir):  # pylint: disable=C0111
         seed_indep_imgs[sname] = tmp_img
         seed_indep_info[sname] = tmp_info
 
-    seeds = sitkstrats.distribute_seeds(lung_img, nseeds)
+    # compute seeds, first by taking the centers of mass of a bunch of the
+    # watershed segemented regions, then by adding a bunch of random ones that
+    # are inside the lung field.
+    (seeds, tmp_info) = sitkstrats.com_calc(img=seed_indep_imgs['watershed'],
+                                            max_size=0.5, min_size=1e-5,
+                                            lung_img=lung_img)
+    img_info['deterministic-seeds'] = tmp_info
+    seeds.extend(sitkstrats.distribute_seeds(lung_img, nseeds-len(seeds)))
 
-    # seeds.append((171, 252, 96))
-    # seeds.append((350, 296, 34))
+    # with many deterministic seeds, this list can be longer than nseeds.
+    seeds = seeds[0:nseeds]
 
     seg_info = seeddep(seed_indep_imgs, seeds,
                        root_dir, sha, segstrats, img_info['lungseg']['size'])
 
     img_info['noduleseg'] = {}
-    for seed in seg_info:
+    for (i, seed) in enumerate(seg_info):
+        if i % 10 == 0:
+            print "Segmenting", i
         for segstrat in seg_info[seed]:
             combined_info = {'seed-dependent': seg_info[seed][segstrat]}
 
