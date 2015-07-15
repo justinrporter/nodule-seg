@@ -20,8 +20,7 @@ def write(img, fname):
 
 
 def read(fname):
-    img_in = sitk.ReadImage(fname)
-    img = sitk.Cast(img_in, sitk.sitkFloat32)
+    img = sitk.ReadImage(fname)
 
     return img
 
@@ -74,6 +73,64 @@ def options_log(func):
     return exec_func
 
 
+def com_calc(img, max_size, min_size, lung_img):
+    '''
+    Calculate the center of mass of each of the labeled regions in img,
+    excluding regions that are outside the lung given in lung_img, or the
+    range size [min_size, max_size], which are reported treated as fractions of
+    the input lung.
+    '''
+    from scipy.ndimage.measurements import center_of_mass as com
+    # pylint: disable=E1101
+
+    arr = sitk.GetArrayFromImage(img)
+    lung_arr = sitk.GetArrayFromImage(lung_img)
+
+    # Take elements from arr only when lung_arr is not zero, i.e. take only
+    # regions in the lung.
+    arr = np.where(lung_arr != 0, arr,
+                   np.zeros(arr.shape,
+                            dtype=arr.dtype))
+
+    counts = np.bincount(np.ravel(arr))
+
+    # volume per voxel is encoded in img spacing, with units mm^3
+    vox_vol = reduce(lambda x, y: x * y, img.GetSpacing())
+
+    # the size of the lung is the size of a voxel times the number of voxels
+    lung_size = np.count_nonzero(lung_arr)*vox_vol
+
+    print sorted(counts)[-10:], sorted([c for c in counts if c != 0])[0:10]
+    print np.count_nonzero(lung_arr)*vox_vol
+
+    # We gate the deterministic seeds for their regions being of a reasonable
+    # size.
+    labels = [(label, n_vox) for (label, n_vox) in enumerate(counts)
+              if min_size*lung_size < n_vox*vox_vol < max_size*lung_size]
+
+    print labels
+
+    labels = [x[0] for x in labels]
+
+    # compute the center of mass for each of the elements up to 100 elements
+    com_list = com(np.where(arr != 0, np.ones(arr.shape), np.zeros(arr.shape)),
+                   labels=arr, index=labels)
+
+    # these are array-indexed and we take our seeds to be image-indexed
+    # plus, they're floats and need to be cast back to integers
+    seeds = [[int(k) for k in reversed(s)] for s in com_list
+             if lung_arr[s] == 1]
+
+    info = {'nseeds': len(seeds),
+            'max_size': max_size,
+            'min_size': min_size,
+            'seeds': [s for s in seeds]}  # deep (enough) copy
+
+    print len(seeds), "of", len(labels), "seeds from", len(counts), "labels"
+
+    return (seeds, info)
+
+
 def distribute_seeds(img, n_pts=100):
     '''Randomly distribute n seeds amongst all points where img != 0'''
     import random
@@ -94,9 +151,10 @@ def aniso_gauss(img_in, options):
     '''CurvatureAnisotropicDiffusion + GradientMagnitudeRecursiveGaussian is a
     a common featurization strategy. Compute these for consumption by other
     sitkstrat functions.'''
+    img = sitk.Cast(img_in, sitk.sitkFloat32)
 
     img = sitk.CurvatureAnisotropicDiffusion(
-        img_in,
+        img,
         timeStep=options['anisodiff']['timestep'],
         conductanceParameter=options['anisodiff']['conductance'],
         # options['anisodiff'].setdefault('scaling_interval', 1),
@@ -143,6 +201,11 @@ def segmentation_union(imgs, options):
     consensus = np.array(incl_count >= options['threshold'] * n_img,
                          dtype='uint8')
 
+    consensus_size = np.count_nonzero(consensus)
+    if consensus_size < 1e3:
+        raise RuntimeWarning("Consensus image failed size threshold.  " +
+                             "Image too small at " + str(consensus_size))
+
     consensus = sitk.GetImageFromArray(consensus)
     consensus.CopyInformation(imgs[0])
     consensus = sitk.Cast(consensus, sitk.sitkUInt8)
@@ -164,8 +227,10 @@ def segment_lung(img, options=None):
 
 @options_log
 def curvature_flow(img_in, options):
+
+    img = sitk.Cast(img_in, sitk.sitkFloat32)
     img = sitk.CurvatureFlow(
-        img_in,
+        img,
         options['curvature_flow']['timestep'],
         options['curvature_flow']['iterations'])
 
