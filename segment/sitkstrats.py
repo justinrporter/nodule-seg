@@ -5,6 +5,7 @@ import datetime
 import os
 
 from functools import wraps
+import logging
 
 import lungseg
 
@@ -81,26 +82,58 @@ def options_log(func):
     return exec_func
 
 
-def cached(func):
+def cached(relevant_opts, max_cache_size=2):
     '''A decorator that uses options and input image to cache an image for
     possible later reuse.'''
 
-    @wraps(func)
-    def exec_func(img_in, opts, cache):
-        sha = hash_img(img_in,
-                       provenance=str(opts)+func.__name__)
+    def cached_decorator(func):
+        '''
+        Produce a decorator configured with the options defined in 'cached'
+        above.
+        '''
+        from collections import OrderedDict
 
-        if sha in cache:
-            img = cache[sha]
-            return (img_in, opts)
-        else:
-            (img, opts) = func(img, opts)
+        # build a cache once for each method?
+        cache = OrderedDict()
 
-        cache[sha] = img
+        @wraps(func)
+        def exec_func(img_in, opts):  # pylint: disable=C0111
 
-        return (img, opts)
+            # SHA should be built based only on the options defined in
+            # relevant opts. This set is not passed to the internal function,
+            # however, since the output is decorated by other functions to
+            # report on outcomes and whatnot
+            limited_opts = dict([(i, opts[i]) for i in opts
+                                 if i in relevant_opts])
+            limited_opts['func'] = func.__name__
+            sha = hash_img(img_in,
+                           provenance=str(limited_opts))
 
-    return exec_func
+            if sha in cache:
+                logging.info("Loading '" + sha + "' from " + func.__name__ +
+                             " cache (size=" + str(len(cache)) + ")")
+
+                img = cache[sha]
+
+                # refresh this image in the order, so we re-add it to the cache
+                del cache[sha]
+            else:
+                logging.info("Cache miss for '" + sha + "' from "
+                             + func.__name__ + "(size="+str(len(cache)) + ")")
+                (img, opts) = func(img_in, opts)
+                cache[sha] = img
+
+            # if the cache size exceeds the max, ditch the oldest entry
+            # this shouldn't ever actually get executed more than once, but
+            # you never know--recursion, for example, could cause many pushes
+            # without appropriate pops.
+            while len(cache) > max_cache_size:
+                # the last item in the list (FIFO) popped only when last=True
+                cache.popitem(last=True)
+
+            return (img, opts)
+        return exec_func
+    return cached_decorator
 
 
 def com_calc(img, max_size, min_size, lung_img):
@@ -138,7 +171,7 @@ def com_calc(img, max_size, min_size, lung_img):
     labels = [(label, n_vox) for (label, n_vox) in enumerate(counts)
               if min_size*lung_size < n_vox*vox_vol < max_size*lung_size]
 
-    print labels
+    print sorted(labels, key=lambda x: x[1])
 
     labels = [x[0] for x in labels]
 
@@ -177,6 +210,7 @@ def distribute_seeds(img, n_pts=100):
     return seeds
 
 
+@cached(relevant_opts=["anisodiff", "gauss"])
 def aniso_gauss(img_in, options):
     '''CurvatureAnisotropicDiffusion + GradientMagnitudeRecursiveGaussian is a
     a common featurization strategy. Compute these for consumption by other
@@ -233,8 +267,8 @@ def segmentation_union(imgs, options):
                          dtype='uint8')
 
     consensus_size = np.count_nonzero(consensus)
-    if consensus_size < 1e3:
-        raise RuntimeWarning("Consensus image failed size threshold.  " +
+    if consensus_size < options['min_size']:
+        raise RuntimeWarning("Consensus imalge failed size threshold.  " +
                              "Image too small at " + str(consensus_size))
 
     consensus = sitk.GetImageFromArray(consensus)

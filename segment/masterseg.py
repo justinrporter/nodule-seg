@@ -3,6 +3,7 @@ import argparse
 import os
 import datetime
 import json
+import logging
 
 import SimpleITK as sitk
 import numpy as np
@@ -120,7 +121,7 @@ def configure_strats():
                                        'conductance': 9.0,
                                        'iterations': 50},
                          "gauss": {'sigma': 1.5},
-                         "watershed": {"level": 5}}
+                         "watershed": {"level": 20}}
             },
             'seed-dependent': {
                 'strategy': sitkstrats.isolate_watershed,
@@ -190,13 +191,12 @@ def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size):
                 (out_imgs.values(),
                  {'threshold': 2.0/3.0,
                   'max_size': lung_size * 0.5,
-                  'min_size': lung_size * 0,
+                  'min_size': lung_size * 1e-5,
                   'input_files': consensus_input_files}),
                 root_dir,
                 sha)
         except RuntimeWarning as w:
             print w
-            print "Failure on", seed, "; sizes"
             seed_info['consensus'] = "failure"
             continue
 
@@ -248,7 +248,7 @@ def run_img(img, sha, nseeds, root_dir):  # pylint: disable=C0111
     # watershed segemented regions, then by adding a bunch of random ones that
     # are inside the lung field.
     (seeds, tmp_info) = sitkstrats.com_calc(img=seed_indep_imgs['watershed'],
-                                            max_size=0.5, min_size=1e-5,
+                                            max_size=0.05, min_size=1e-5,
                                             lung_img=lung_img)
     img_info['deterministic-seeds'] = tmp_info
     seeds.extend(sitkstrats.distribute_seeds(lung_img, nseeds-len(seeds)))
@@ -260,9 +260,7 @@ def run_img(img, sha, nseeds, root_dir):  # pylint: disable=C0111
                        root_dir, sha, segstrats, img_info['lungseg']['size'])
 
     img_info['noduleseg'] = {}
-    for (i, seed) in enumerate(seg_info):
-        if i % 10 == 0:
-            print "Segmenting", i
+    for seed in seg_info:
         for segstrat in seg_info[seed]:
             combined_info = {'seed-dependent': seg_info[seed][segstrat]}
 
@@ -286,13 +284,30 @@ class DateTimeEncoder(json.JSONEncoder):  # pylint: disable=C0111
         return json.JSONEncoder.default(self, obj)
 
 
+def write_info(info, filename="masterseg-run.json"):
+    with open(filename, 'w') as f:
+        try:
+            json_out = json.dumps(info, sort_keys=True,
+                                  indent=2, separators=(',', ': '),
+                                  cls=DateTimeEncoder)
+        except TypeError as err:
+            logging.error("Error encountered serializing for JSON, dumping " +
+                          "dict here:\n"+str(info))
+            raise err
+
+        f.write(json_out)
+
+
 def main(argv=None):
     '''Run the driver script for this module. This code only runs if we're
     being run as a script. Otherwise, it's silent and just exposes methods.'''
     args = process_command_line(argv)
 
-    run_info = {}
+    logging.basicConfig(filename="log-"+str(datetime.datetime.now())+".log",
+                        level=logging.DEBUG,
+                        format='%(asctime)s %(message)s')
 
+    run_info = {}
     for img in args.images:
         basename = os.path.basename(img)
         sha = basename[:basename.rfind('.')]
@@ -300,17 +315,8 @@ def main(argv=None):
         run_info[sha] = run_img(sitkstrats.read(img), sha,
                                 args.nseeds, args.media_root)
 
-    with open("masterseg-run.json", 'w') as f:
-        try:
-            json_out = json.dumps(run_info, sort_keys=True,
-                                  indent=2, separators=(',', ': '),
-                                  cls=DateTimeEncoder)
-        except TypeError as e:
-            print "Error encountered, dumping info"
-            print run_info
-            raise e
+    write_info(run_info)
 
-        f.write(json_out)
     return 1
 
 
