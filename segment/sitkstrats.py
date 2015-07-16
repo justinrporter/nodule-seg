@@ -296,7 +296,7 @@ def segmentation_union(imgs, options):
 
     consensus_size = np.count_nonzero(consensus)
     if consensus_size < options['min_size']:
-        raise RuntimeWarning("Consensus imalge failed size threshold.  " +
+        raise RuntimeWarning("Consensus image failed size threshold.  " +
                              "Image too small at " + str(consensus_size))
 
     consensus = sitk.GetImageFromArray(consensus)
