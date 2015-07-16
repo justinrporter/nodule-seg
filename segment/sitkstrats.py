@@ -4,6 +4,8 @@ import numpy as np
 import datetime
 import os
 
+from functools import wraps
+
 import lungseg
 
 
@@ -21,16 +23,27 @@ def write(img, fname):
 
 def read(fname):
     img = sitk.ReadImage(fname)
-
     return img
 
 
-def to_array(img):
-    return sitk.GetImageFromArray(img)
+def hash_img(img, provenance):
+    '''
+    Calculate the hash of an image and the options that would be used to
+    process it using sha512. This is used most frequently to cache images for
+    later reuse.
+    '''
+    import hashlib
+
+    sha = hashlib.sha512()
+    sha.update(sitk.GetArrayFromImage(img))
+    sha.update(provenance)
+
+    return sha.hexdigest()
 
 
 def log_size(func):
     '''A decorator that calculates the size of a segmentation.'''
+    @wraps(func)
     def exec_func(img, opts=None):
         '''Execute func from outer context and compute the size of the image
         func produces.'''
@@ -44,15 +57,13 @@ def log_size(func):
 
         return (img_out, opts_out)
 
-    # If we don't do this, we lose the ability to introspect at higher levels.
-    exec_func.__name__ = func.__name__
-
     return exec_func
 
 
 def options_log(func):
     '''A decorator that will modify the incoming options object to also include
     information about runtime and algorithm choice.'''
+    @wraps(func)
     def exec_func(img, opts=None):
         '''The inner function for options_log'''
         if opts is None:
@@ -67,8 +78,27 @@ def options_log(func):
 
         return (img, out_opts)
 
-    # If we don't do this, we lose the ability to introspect at higher levels.
-    exec_func.__name__ = func.__name__
+    return exec_func
+
+
+def cached(func):
+    '''A decorator that uses options and input image to cache an image for
+    possible later reuse.'''
+
+    @wraps(func)
+    def exec_func(img_in, opts, cache):
+        sha = hash_img(img_in,
+                       provenance=str(opts)+func.__name__)
+
+        if sha in cache:
+            img = cache[sha]
+            return (img_in, opts)
+        else:
+            (img, opts) = func(img, opts)
+
+        cache[sha] = img
+
+        return (img, opts)
 
     return exec_func
 
@@ -151,6 +181,7 @@ def aniso_gauss(img_in, options):
     '''CurvatureAnisotropicDiffusion + GradientMagnitudeRecursiveGaussian is a
     a common featurization strategy. Compute these for consumption by other
     sitkstrat functions.'''
+
     img = sitk.Cast(img_in, sitk.sitkFloat32)
 
     img = sitk.CurvatureAnisotropicDiffusion(
