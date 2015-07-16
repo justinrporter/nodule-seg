@@ -143,16 +143,15 @@ def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size):
     out_info = {}
 
     for seed in seeds:
-        sys.stdout.write("Segmenting "+str(seed)+"... ")
-        sys.stdout.flush()
-
         try:
             if segmented[seed[2], seed[1], seed[0]] >= 2:
-                print "ALREADY SEGMENTED"
+                logging.info(
+                    "Tried to segment %s but it was already segmented", seed)
                 continue
-        except IndexError as e:
-            print seed, segmented.shape
-            raise e
+        except IndexError as err:
+            logging.error(" ".join([str(seed), str(segmented.shape)]))
+            logging.error(str(err))
+            raise err
 
         # We want to hold onto images and info dicts for each segmentation,
         # and we want to automagically store the info we put in seed_info into
@@ -164,8 +163,6 @@ def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size):
         # function that executes it.
         for (sname, strat) in [(strnam, segstrats[strnam]['seed-dependent'])
                                for strnam in segstrats]:
-            sys.stdout.write(sname+"... ")
-            sys.stdout.flush()
 
             img_in = imgs[sname]
 
@@ -179,7 +176,9 @@ def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size):
 
             out_imgs[sname] = tmp_img
             seed_info[sname] = tmp_info
-        sys.stdout.write("consensus... ")
+
+            logging.info("Segmented %s with %s", seed, sname)
+
 
         # we need the names of the input files so that our options hash is
         # dependent on the input images.
@@ -195,12 +194,12 @@ def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size):
                   'input_files': consensus_input_files}),
                 root_dir,
                 sha)
-        except RuntimeWarning as w:
-            print w
+        except RuntimeWarning as war:
+            logging.info("Failed %s during consensus: %s", seed, war)
             seed_info['consensus'] = "failure"
             continue
 
-        print ""
+        logging.info("Finished segmenting %s", seed)
 
         segmented += sitk.GetArrayFromImage(consensus)
 
@@ -232,14 +231,19 @@ def run_img(img, sha, nseeds, root_dir):  # pylint: disable=C0111
             tmp_img = sitkstrats.read(fname)
             tmp_info = strat['opts']
             tmp_info['file'] = os.path.join(fname)
-            print "loaded indep_img"
+            logging.info(
+                "Loaded seed-independent image for '%s', '%s' from file",
+                sname, fname)
         except RuntimeError:
-            print "building "
+            logging.debug(
+                "Building seed-independent image '%s', '%s'.", sname, fname)
             (tmp_img, tmp_info) = mediadir_log(strat['strategy'],
                                                (img, strat['opts']),
                                                root_dir,
                                                sha)
-            print "built in", tmp_info['time']
+            logging.info(
+                "Built seed-independent image '%s', '%s' in %s",
+                sname, fname, tmp_info['time'])
 
         seed_indep_imgs[sname] = tmp_img
         seed_indep_info[sname] = tmp_info
