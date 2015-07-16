@@ -163,15 +163,15 @@ def com_calc(img, max_size, min_size, lung_img):
     # the size of the lung is the size of a voxel times the number of voxels
     lung_size = np.count_nonzero(lung_arr)*vox_vol
 
-    print sorted(counts)[-10:], sorted([c for c in counts if c != 0])[0:10]
-    print np.count_nonzero(lung_arr)*vox_vol
+    # print sorted(counts)[-10:], sorted([c for c in counts if c != 0])[0:10]
+    # print np.count_nonzero(lung_arr)*vox_vol
 
     # We gate the deterministic seeds for their regions being of a reasonable
     # size.
     labels = [(label, n_vox) for (label, n_vox) in enumerate(counts)
               if min_size*lung_size < n_vox*vox_vol < max_size*lung_size]
 
-    print sorted(labels, key=lambda x: x[1])
+    # print sorted(labels, key=lambda x: x[1])
 
     labels = [x[0] for x in labels]
 
@@ -189,9 +189,37 @@ def com_calc(img, max_size, min_size, lung_img):
             'min_size': min_size,
             'seeds': [s for s in seeds]}  # deep (enough) copy
 
-    print len(seeds), "of", len(labels), "seeds from", len(counts), "labels"
+    logging.info("%s of %s seeds from %s watershed labels",
+                 len(seeds), len(labels), len(counts))
 
     return (seeds, info)
+
+
+def crop_to_segmentation(img, lung_img, padding_ratio=0.00):
+    '''
+    Given an image and a segmentation of that image, crop the image to include
+    only the portions of the image present in that segmentation.
+    '''
+    from bounding import bounding_cube
+
+    assert img.GetSize() == lung_img.GetSize()
+    assert img.GetSpacing() == lung_img.GetSpacing()
+
+    # calculate the bounding cube of the lung segmentation in numpy coordinates
+    lims = bounding_cube(sitk.GetArrayFromImage(lung_img))
+
+    # calculate the amount of each image to be removed (in itk indexing)
+    lower_remove = [l[0] for l in reversed(lims)]
+    upper_remove = [img.GetSize()[i] - l[1] for (i, l)
+                    in enumerate(reversed(lims))]
+
+    padding = [int(padding_ratio*img.GetSize()[i])
+               for i in range(len(img.GetSize()))]
+
+    padded_removes = [[r[i] - padding[i] for i in range(len(padding))]
+                      for r in [lower_remove, upper_remove]]
+
+    return sitk.Crop(img, *padded_removes)
 
 
 def distribute_seeds(img, n_pts=100):
