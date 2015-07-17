@@ -189,12 +189,12 @@ def com_calc(img, max_size, min_size, lung_img):
             'min_size': min_size,
             'seeds': [s for s in seeds]}  # deep (enough) copy
 
-    logging.info("%s of %s seeds from %s watershed labels",
+    logging.info("%s in-lung of %s seeds from %s watershed labels",
                  len(seeds), len(labels), len(counts))
 
     return (seeds, info)
 
-
+@options_log
 def crop_to_segmentation(img, lung_img, padding_ratio=0.00):
     '''
     Given an image and a segmentation of that image, crop the image to include
@@ -219,7 +219,11 @@ def crop_to_segmentation(img, lung_img, padding_ratio=0.00):
     padded_removes = [[r[i] - padding[i] for i in range(len(padding))]
                       for r in [lower_remove, upper_remove]]
 
-    return sitk.Crop(img, *padded_removes)
+    logging.info("Cropped img to %s", lims)
+
+    return (sitk.Crop(img, *padded_removes),
+            {"origin": (lims[0][0], lims[1][0], lims[2][0]),
+             "padding": padding_ratio})
 
 
 def distribute_seeds(img, n_pts=100):

@@ -1,3 +1,5 @@
+import numpy as np
+
 def bounding_cube(arr):
     '''
     Report the limits of the smallest box that contains the all values that
@@ -12,8 +14,6 @@ def bounding_cube(arr):
 
     assert a2lim == a2lim_extra
     assert bounding_box(np.any(arr, axis=2)) == (a1lim, a0lim)
-
-    print a0lim, a1lim, a2lim
 
     return (a0lim, a1lim, a2lim)
 

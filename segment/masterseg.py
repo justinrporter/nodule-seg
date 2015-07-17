@@ -38,9 +38,9 @@ def process_command_line(argv):
     args.media_root = os.path.abspath(args.media_root)
     args.images = [os.path.abspath(image) for image in args.images]
 
-    logname = os.path.join(os.path.abspath(args.logs),
+    logname = os.path.join(os.path.abspath(args.log),
                            "log-"+str(datetime.datetime.now())+".log")
-    logname = "-".join(logname.split())
+    logname = "_".join(logname.split())
 
     logging.basicConfig(filename=logname,
                         level=logging.DEBUG,
@@ -68,14 +68,17 @@ def opthash(options):
     return sha.hexdigest()[0:8]
 
 
-def mediadir_log(func, (in_img, in_opts), mediadir, sha):
+def mediadir_log(func, (in_img, in_opts), mediadir, sha, subdir=None):
     '''Write the input file in the appropriate directory using its sha'''
     optha = opthash(in_opts)
     label = func.__name__
 
     (img, opts) = func(in_img, in_opts)
 
-    out_fname = os.path.join(mediadir, label, sha+"-"+optha+'.nii')
+    if subdir is None:
+        subdir = label
+
+    out_fname = os.path.join(mediadir, subdir, sha+"-"+optha+'.nii')
 
     sitkstrats.write(img, out_fname)
 
@@ -220,14 +223,20 @@ def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size):
     return out_info
 
 
-def run_img(img, sha, nseeds, root_dir):  # pylint: disable=C0111
+def run_img(img_in, sha, nseeds, root_dir):  # pylint: disable=C0111
     '''Run the entire protocol on a particular image starting with sha hash'''
     img_info = {}
 
     lung_img, lung_info = mediadir_log(sitkstrats.segment_lung,
-                                       (img, {}),
+                                       (img_in, {}),
                                        root_dir, sha)
     img_info['lungseg'] = lung_info
+
+    (img, tmp_info) = mediadir_log(sitkstrats.crop_to_segmentation,
+                                   (img_in, lung_img),
+                                   root_dir, sha, subdir="crop")
+    lung_img = sitkstrats.crop_to_segmentation(lung_img, lung_img)[0]
+    img_info['crop'] = tmp_info
 
     segstrats = configure_strats()
     seed_indep_imgs = {}
@@ -323,6 +332,8 @@ def main(argv=None):
     for img in args.images:
         basename = os.path.basename(img)
         sha = basename[:basename.rfind('.')]
+
+        logging.info("Beginning image %s", img)
 
         run_info[sha] = run_img(sitkstrats.read(img), sha,
                                 args.nseeds, args.media_root)
