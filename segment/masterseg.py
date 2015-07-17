@@ -30,10 +30,22 @@ def process_command_line(argv):
     parser.add_argument(
         '--profile', default=False, action='store_true',
         help="Run cProfile on script execution.")
+    parser.add_argument(
+        '--log', default="logs/",
+        help="The directory to place logs in.")
 
     args = parser.parse_args(argv[1:])
     args.media_root = os.path.abspath(args.media_root)
     args.images = [os.path.abspath(image) for image in args.images]
+
+    logname = os.path.join(os.path.abspath(args.logs),
+                           "log-"+str(datetime.datetime.now())+".log")
+    logname = "-".join(logname.split())
+
+    logging.basicConfig(filename=logname,
+                        level=logging.DEBUG,
+                        format='%(asctime)s %(message)s')
+    args.log = logname
 
     return args
 
@@ -306,10 +318,6 @@ def main(argv=None):
     '''Run the driver script for this module. This code only runs if we're
     being run as a script. Otherwise, it's silent and just exposes methods.'''
     args = process_command_line(argv)
-
-    logging.basicConfig(filename="log-"+str(datetime.datetime.now())+".log",
-                        level=logging.DEBUG,
-                        format='%(asctime)s %(message)s')
 
     run_info = {}
     for img in args.images:
