@@ -10,16 +10,19 @@ import logging
 import lungseg
 
 
-def write(img, fname):
+def write(img, fname, compression=True):
+    '''
+    A wrapper for sitk WriteImage that defaults to using compression and
+    creates directories where required.
+    '''
+
     # ImageFileWriter fails if the directory doesn't exist. Create if req'd
     try:
         os.makedirs(os.path.dirname(fname))
     except OSError:
         pass
 
-    out = sitk.ImageFileWriter()
-    out.SetFileName(fname)
-    out.Execute(img)
+    sitk.WriteImage(img, fname, compression)
 
 
 def read(fname):
@@ -82,7 +85,7 @@ def options_log(func):
     return exec_func
 
 
-def cached(relevant_opts, max_cache_size=2):
+def cached(relevant_opts, max_cache_size=1):
     '''A decorator that uses options and input image to cache an image for
     possible later reuse.'''
 
