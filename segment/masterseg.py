@@ -338,7 +338,7 @@ def main(argv=None):
         run_info[sha] = run_img(sitkstrats.read(img), sha,
                                 args.nseeds, args.media_root)
 
-    write_info(run_info)
+        write_info(run_info, filename=sha+"-seg.json")
 
     return 1
 
