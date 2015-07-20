@@ -33,13 +33,18 @@ def process_command_line(argv):
     parser.add_argument(
         '--log', default="logs/",
         help="The directory to place logs in.")
+    parser.add_argument(
+        '--seed', default=None, nargs=3, type=int,
+        help="Add an additional, manually determined seed to the calculation.")
 
     args = parser.parse_args(argv[1:])
     args.media_root = os.path.abspath(args.media_root)
     args.images = [os.path.abspath(image) for image in args.images]
 
+    log_basename = "-".join([os.path.basename(img) for img in args.images])
+    log_basename += "-" + str(datetime.datetime.now())
     logname = os.path.join(os.path.abspath(args.log),
-                           "log-"+str(datetime.datetime.now())+".log")
+                           log_basename+".log")
     logname = "_".join(logname.split())
 
     logging.basicConfig(filename=logname,
@@ -101,9 +106,8 @@ def configure_strats():
         'confidence_connected': {
             'seed-independent': {
                 'strategy': sitkstrats.curvature_flow,
-                'opts': {'curvature_flow': {
-                            'timestep': 0.01,
-                            'iterations': 25}}
+                'opts': {'curvature_flow': {'timestep': 0.01,
+                                            'iterations': 25}}
                 },
             'seed-dependent': {
                 'strategy': sitkstrats.confidence_connected,
@@ -226,7 +230,7 @@ def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size):
     return out_info
 
 
-def run_img(img_in, sha, nseeds, root_dir):  # pylint: disable=C0111
+def run_img(img_in, sha, nseeds, root_dir, addl_seed):  # pylint: disable=C0111
     '''Run the entire protocol on a particular image starting with sha hash'''
     img_info = {}
 
@@ -280,6 +284,9 @@ def run_img(img_in, sha, nseeds, root_dir):  # pylint: disable=C0111
                                             lung_img=lung_img)
     img_info['deterministic-seeds'] = tmp_info
     seeds.extend(sitkstrats.distribute_seeds(lung_img, nseeds-len(seeds)))
+
+    if addl_seed is not None:
+        seeds.insert(0, addl_seed)
 
     # with many deterministic seeds, this list can be longer than nseeds.
     seeds = seeds[0:nseeds]
@@ -339,7 +346,7 @@ def main(argv=None):
         logging.info("Beginning image %s", img)
 
         run_info[sha] = run_img(sitkstrats.read(img), sha,
-                                args.nseeds, args.media_root)
+                                args.nseeds, args.media_root, args.seed)
 
         write_info(run_info, filename=sha+"-seg.json")
 
