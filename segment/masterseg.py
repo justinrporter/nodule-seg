@@ -337,7 +337,6 @@ def main(argv=None):
     being run as a script. Otherwise, it's silent and just exposes methods.'''
     args = process_command_line(argv)
 
-    run_info = {}
     for img in args.images:
         basename = os.path.basename(img)
         sha = basename[:basename.rfind('.')]
@@ -352,8 +351,8 @@ def main(argv=None):
         logging.info("Beginning image %s", img)
 
         try:
-            run_info[sha] = run_img(sitkstrats.read(img), sha,
-                                    args.nseeds, args.media_root, args.seed)
+            run_info = run_img(sitkstrats.read(img), sha,
+                               args.nseeds, args.media_root, args.seed)
         except Exception as exc:  # pylint: disable=W0703
             logging.critical("Encountered critical exception:\n%s", exc)
 
