@@ -41,20 +41,6 @@ def process_command_line(argv):
     args.media_root = os.path.abspath(args.media_root)
     args.images = [os.path.abspath(image) for image in args.images]
 
-    log_basename = "-".join([os.path.basename(img) for img in args.images])
-    log_basename += "-" + str(datetime.datetime.now())
-    logname = os.path.join(os.path.abspath(args.log),
-                           log_basename+".log")
-    logname = "_".join(logname.split())
-
-    logging.basicConfig(filename=logname,
-                        level=logging.DEBUG,
-                        format='%(asctime)s %(message)s')
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.DEBUG)
-
-    args.log = logname
-
     return args
 
 
@@ -333,6 +319,19 @@ def write_info(info, filename="masterseg-run.json"):
         f.write(json_out)
 
 
+def log_name_gen(sha, log_dir):
+    '''
+    Build a the absolute path name of the log file for an image, given its sha
+    and a log file directory.
+    '''
+    logfilename = "-".join([sha, str(datetime.datetime.now())])+".log"
+    logfilename = logfilename.replace(" ", "-")
+    logfilename = os.path.join(os.path.abspath(log_dir),
+                               logfilename)
+
+    return logfilename
+
+
 def main(argv=None):
     '''Run the driver script for this module. This code only runs if we're
     being run as a script. Otherwise, it's silent and just exposes methods.'''
@@ -343,10 +342,17 @@ def main(argv=None):
         basename = os.path.basename(img)
         sha = basename[:basename.rfind('.')]
 
+        logging.basicConfig(filename=log_name_gen(sha, args.log),
+                            level=logging.DEBUG,
+                            format='%(asctime)s %(message)s')
+
         logging.info("Beginning image %s", img)
 
-        run_info[sha] = run_img(sitkstrats.read(img), sha,
-                                args.nseeds, args.media_root, args.seed)
+        try:
+            run_info[sha] = run_img(sitkstrats.read(img), sha,
+                                    args.nseeds, args.media_root, args.seed)
+        except Exception as exc:  # pylint: disable=W0703
+            logging.critical("Encountered critical exception:\n%s", exc)
 
         write_info(run_info, filename=sha+"-seg.json")
 
