@@ -56,13 +56,13 @@ def otsu(img):
         return filt.Execute(img)
 
 
-def dialate(img):
+def dialate(img, probe_size):
     '''Once lungs are segmented out specifically, there's a tendency to get
     little islands in the lung fields. This dialatest the selection to remove
     islands and to generate a smoother segmentation.'''
     filt = sitk.BinaryDilateImageFilter()
     filt.SetKernelType(filt.Ball)
-    filt.SetKernelRadius(3)
+    filt.SetKernelRadius(probe_size)
 
     return filt.Execute(img, 0, 1, False)
 
@@ -158,25 +158,24 @@ def checkdist(seeds):
     raise NotImplementedError("Checkdist is under construction.")
 
 
-def lungseg(img):
+def lungseg(img, options):
     '''Segment lung.'''
     img = otsu(img)
     img = find_components(img)
     img = isolate_lung_field(img)
-    img = dialate(img)
+    img = dialate(img, options['probe_size'])
     img = find_components(img)
     img = isolate_not_biggest(img)
+    img = sitk.BinaryErode(img, options['probe_size']/2,
+                           sitk.BinaryErodeImageFilter.Ball)
 
     return img
 
 
 def segment_lung_image(fullpath, img_load):
 
-    basename = os.path.basename(fullpath)
     img = img_load(fullpath)
-
-    img = lungseg(img)
-
+    img = lungseg(img, {'probe_size': 3})
 
     return seeds
 

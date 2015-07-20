@@ -228,7 +228,7 @@ def run_img(img_in, sha, nseeds, root_dir):  # pylint: disable=C0111
     img_info = {}
 
     lung_img, lung_info = mediadir_log(sitkstrats.segment_lung,
-                                       (img_in, {}),
+                                       (img_in, {'probe_size': 7}),
                                        root_dir, sha)
     img_info['lungseg'] = lung_info
 

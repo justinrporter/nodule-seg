@@ -315,12 +315,17 @@ def segmentation_union(imgs, options):
 
 @log_size
 @options_log
-def segment_lung(img, options=None):
+def segment_lung(img, options):
     '''Produce a lung segmentation from an input image.'''
-    if options is None:
-        options = {}
 
-    img = lungseg.lungseg(img)
+    img = lungseg.otsu(img)
+    img = lungseg.find_components(img)
+    img = lungseg.isolate_lung_field(img)
+    img = lungseg.dialate(img, options['probe_size'])
+    img = lungseg.find_components(img)
+    img = lungseg.isolate_not_biggest(img)
+    img = sitk.BinaryErode(img, options['probe_size']-2,
+                           sitk.BinaryErodeImageFilter.Ball)
 
     return (img, options)
 
