@@ -342,6 +342,9 @@ def main(argv=None):
         basename = os.path.basename(img)
         sha = basename[:basename.rfind('.')]
 
+        # this only gets run the first time around, so if >1 image is
+        # specified, they will ALL be in the file named by the sha of the first
+        # one. But grepping around isn't too hard.
         logging.basicConfig(filename=log_name_gen(sha, args.log),
                             level=logging.DEBUG,
                             format='%(asctime)s %(message)s')
