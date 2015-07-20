@@ -1,0 +1,19 @@
+#PBS -l nodes=1:ppn=1
+
+SCRATCH="/scratch/jporter/"
+mkdir -p $SCRATCH/tmp
+cd $SCRATCH/tmp
+RUNDIR=$( pwd )
+
+mkdir -p $RUNDIR/logs/
+mkdir -p $RUNDIR/media_root/
+
+EXECDIR="/home/jporter/nodule-seg/segment/"
+PYTHONPATH=$PYTHONPATH:$EXECDIR
+HOME_MEDIA="/home/jporter/nodule-seg/media_root"
+
+python $EXECDIR/masterseg.py --nseeds 5 $HOME_MEDIA/init/0c2b8406cd8ca33af1130c3c91cfb70b2797df7a.nii --media_root $RUNDIR/media_root/ --log $RUNDIR/logs/
+
+WRITEBACK_DIR=$HOME_MEDIA/latest_run/
+mkdir -p $WRITEBACK_DIR/
+cp -ru $RUNDIR/* $WRITEBACK_DIR/
