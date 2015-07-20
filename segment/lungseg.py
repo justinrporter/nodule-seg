@@ -8,25 +8,6 @@ import SimpleITK as sitk  # pylint: disable=F0401
 import os
 import numpy as np
 
-import dicom2nifti
-
-
-def process_command_line(argv):
-    '''Parse the command line and do a first-pass on processing them into a
-    format appropriate for the rest of the script.'''
-
-    parser = argparse.ArgumentParser(formatter_class=argparse.
-                                     ArgumentDefaultsHelpFormatter)
-
-    parser.add_argument("--dicomdirs", nargs="+",
-                        help="The arguments the script operates on.")
-    parser.add_argument("--nseeds", type=int, default=100,
-                        help="The number of randomly placed seeds to produce.")
-
-    args = parser.parse_args(argv[1:])
-
-    return args
-
 
 def otsu(img):
     '''Use an 'otsu' thresholding to segment out high- and low-attenuation
@@ -170,26 +151,3 @@ def lungseg(img, options):
                            sitk.BinaryErodeImageFilter.Ball)
 
     return img
-
-
-def segment_lung_image(fullpath, img_load):
-
-    img = img_load(fullpath)
-    img = lungseg(img, {'probe_size': 3})
-
-    return seeds
-
-
-def main(argv=None):
-    '''Run the driver script for this module. This code only runs if we're
-    being run as a script. Otherwise, it's sislent and just exposes methods.'''
-    args = process_command_line(argv)
-
-    for dicomdir in args.dicomdirs:
-        segment_lung_image(os.path.abspath(dicomdir),
-                           dicom2nifiti.load_dicomsub, args.nseeds)
-
-    return 1
-
-if __name__ == "__main__":
-    sys.exit(main(sys.argv))
