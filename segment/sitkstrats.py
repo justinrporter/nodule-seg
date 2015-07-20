@@ -169,18 +169,27 @@ def com_calc(img, max_size, min_size, lung_img):
     # print sorted(counts)[-10:], sorted([c for c in counts if c != 0])[0:10]
     # print np.count_nonzero(lung_arr)*vox_vol
 
+    logging.debug("Availiable labels and sizes: %s",
+                  [p for p in enumerate(counts) if p[1] > 0])
+
     # We gate the deterministic seeds for their regions being of a reasonable
     # size.
-    labels = [(label, n_vox) for (label, n_vox) in enumerate(counts)
+    labels = [label for (label, n_vox) in enumerate(counts)
               if min_size*lung_size < n_vox*vox_vol < max_size*lung_size]
 
-    # print sorted(labels, key=lambda x: x[1])
-
-    labels = [x[0] for x in labels]
+    # we don't want to calculate the COM of the background, no matter what
+    # our min/max sizes are
+    try:
+        labels.remove(0)
+    except ValueError:
+        #Zero wasn't in the list
+        pass
 
     # compute the center of mass for each of the elements up to 100 elements
     com_list = com(np.where(arr != 0, np.ones(arr.shape), np.zeros(arr.shape)),
                    labels=arr, index=labels)
+
+    logging.debug("Label-COM correspondence: %s", dict(zip(labels, com_list)))
 
     # these are array-indexed and we take our seeds to be image-indexed
     # plus, they're floats and need to be cast back to integers

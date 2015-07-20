@@ -45,6 +45,9 @@ def process_command_line(argv):
     logging.basicConfig(filename=logname,
                         level=logging.DEBUG,
                         format='%(asctime)s %(message)s')
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.DEBUG)
+
     args.log = logname
 
     return args
