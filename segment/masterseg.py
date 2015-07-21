@@ -10,6 +10,9 @@ import numpy as np
 
 import sitkstrats
 
+# a flag to run the script in debug mode. ONLY SET in process_command_line.
+global DEBUG  # pylint: disable=W0604
+DEBUG = False
 
 def process_command_line(argv):
     '''Parse the command line and do a first-pass on processing them into a
@@ -19,7 +22,7 @@ def process_command_line(argv):
                                      ArgumentDefaultsHelpFormatter)
 
     parser.add_argument(
-        "images", nargs="+",
+        "image",
         help="The dicom directories to operate on.")
     parser.add_argument(
         "--nseeds", type=int, default=10,
@@ -34,12 +37,18 @@ def process_command_line(argv):
         '--log', default="logs/",
         help="The directory to place logs in.")
     parser.add_argument(
-        '--seed', default=None, nargs=3, type=int,
+        '--seed', default=None, nargs=3, type=int, metavar=('X', 'Y', 'Z'),
         help="Add an additional, manually determined seed to the calculation.")
+    parser.add_argument(
+        '--debug', default=False, action="store_true",
+        help="Set the script to run in debug mode, where it produces FAR " +
+        "fewer intermediate files.")
 
     args = parser.parse_args(argv[1:])
     args.media_root = os.path.abspath(args.media_root)
-    args.images = [os.path.abspath(image) for image in args.images]
+    args.image = [os.path.abspath(image) for image in args.images]
+
+    DEBUG = args.debug
 
     return args
 
@@ -49,6 +58,7 @@ def set_label(fname, label, labsep='-'):
     '''
     ext = fname[fname.rfind('.'):]
     fname = fname[:fname.rfind('.')]+labsep+label+ext
+
     return fname
 
 
@@ -62,8 +72,23 @@ def opthash(options):
     return sha.hexdigest()[0:8]
 
 
+def debug_log(func, arg, *args, **kwargs):
+    '''
+    Wrapper for mediadir_log that writes to disk only if DEBUG is set to true.
+    '''
+    if DEBUG:
+        return mediadir_log(func, arg, *args, **kwargs)
+    else:
+        return func(*arg)
+
+
 def mediadir_log(func, (in_img, in_opts), mediadir, sha, subdir=None):
-    '''Write the input file in the appropriate directory using its sha'''
+    '''
+    Invoke some image processing step in the pipeline and write the resulting
+    file to the directory appropriate to the algorithm/step
+    that generated it using its sha and the function. Also decorates the info
+    object with information about the file's location.
+    '''
     optha = opthash(in_opts)
     label = func.__name__
 
@@ -177,10 +202,10 @@ def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size):
             opts = dict(strat['opts'])
             opts['seed'] = seed
 
-            (tmp_img, tmp_info) = mediadir_log(strat['strategy'],
-                                               (img_in, opts),
-                                               root_dir,
-                                               sha)
+            (tmp_img, tmp_info) = debug_log(strat['strategy'],
+                                            (img_in, opts),
+                                            root_dir,
+                                            sha)
 
             out_imgs[sname] = tmp_img
             seed_info[sname] = tmp_info
@@ -220,14 +245,14 @@ def run_img(img_in, sha, nseeds, root_dir, addl_seed):  # pylint: disable=C0111
     '''Run the entire protocol on a particular image starting with sha hash'''
     img_info = {}
 
-    lung_img, lung_info = mediadir_log(sitkstrats.segment_lung,
-                                       (img_in, {'probe_size': 7}),
-                                       root_dir, sha)
+    lung_img, lung_info = debug_log(sitkstrats.segment_lung,
+                                    (img_in, {'probe_size': 7}),
+                                    root_dir, sha)
     img_info['lungseg'] = lung_info
 
-    (img, tmp_info) = mediadir_log(sitkstrats.crop_to_segmentation,
-                                   (img_in, lung_img),
-                                   root_dir, sha, subdir="crop")
+    (img, tmp_info) = debug_log(sitkstrats.crop_to_segmentation,
+                                (img_in, lung_img),
+                                root_dir, sha, subdir="crop")
     lung_img = sitkstrats.crop_to_segmentation(lung_img, lung_img)[0]
     img_info['crop'] = tmp_info
 
@@ -251,10 +276,10 @@ def run_img(img_in, sha, nseeds, root_dir, addl_seed):  # pylint: disable=C0111
         except RuntimeError:
             logging.debug(
                 "Building seed-independent image '%s', '%s'.", sname, fname)
-            (tmp_img, tmp_info) = mediadir_log(strat['strategy'],
-                                               (img, strat['opts']),
-                                               root_dir,
-                                               sha)
+            (tmp_img, tmp_info) = debug_log(strat['strategy'],
+                                            (img, strat['opts']),
+                                            root_dir,
+                                            sha)
             logging.info(
                 "Built seed-independent image '%s', '%s' in %s",
                 sname, fname, tmp_info['time'])
@@ -273,6 +298,12 @@ def run_img(img_in, sha, nseeds, root_dir, addl_seed):  # pylint: disable=C0111
 
     if addl_seed is not None:
         seeds.insert(0, addl_seed)
+
+    if len(seeds) > nseeds:
+        logging.warning("The number of seeds generated in the dependent " +
+                        "phase (%s) is greater than the allowed number of " +
+                        "seeds (%s). The list of seeds is being truncated.",
+                        len(seeds), nseeds)
 
     # with many deterministic seeds, this list can be longer than nseeds.
     seeds = seeds[0:nseeds]
@@ -337,26 +368,26 @@ def main(argv=None):
     being run as a script. Otherwise, it's silent and just exposes methods.'''
     args = process_command_line(argv)
 
-    for img in args.images:
-        basename = os.path.basename(img)
-        sha = basename[:basename.rfind('.')]
+    basename = os.path.basename(args.image)
+    sha = basename[:basename.rfind('.')]
 
-        # this only gets run the first time around, so if >1 image is
-        # specified, they will ALL be in the file named by the sha of the first
-        # one. But grepping around isn't too hard.
-        logging.basicConfig(filename=log_name_gen(sha, args.log),
-                            level=logging.DEBUG,
-                            format='%(asctime)s %(message)s')
+    # this only gets run the first time around, so if >1 image is
+    # specified, they will ALL be in the file named by the sha of the first
+    # one. But grepping around isn't too hard.
+    logging.basicConfig(filename=log_name_gen(sha, args.log),
+                        level=logging.DEBUG,
+                        format='%(asctime)s %(message)s')
 
-        logging.info("Beginning image %s", img)
+    logging.info("Beginning image %s", args.image)
 
-        try:
-            run_info = run_img(sitkstrats.read(img), sha,
-                               args.nseeds, args.media_root, args.seed)
-        except Exception as exc:  # pylint: disable=W0703
-            logging.critical("Encountered critical exception:\n%s", exc)
+    # try:
+    run_info = run_img(sitkstrats.read(args.image), sha,
+                       args.nseeds, args.media_root, args.seed)
+    # except Exception as exc:  # pylint: disable=W0703
+    #     logging.critical("Encountered critical exception:\n%s", exc)
+    #     raise exc
 
-        write_info(run_info, filename=sha+"-seg.json")
+    write_info(run_info, filename=os.path.join(args.log, sha+"-seg.json"))
 
     return 1
 

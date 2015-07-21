@@ -138,7 +138,6 @@ def cached(relevant_opts, max_cache_size=1):
         return exec_func
     return cached_decorator
 
-
 def com_calc(img, max_size, min_size, lung_img):
     '''
     Calculate the center of mass of each of the labeled regions in img,
