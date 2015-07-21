@@ -30,7 +30,7 @@ def read(fname):
     return img
 
 
-def hash_img(img, provenance):
+def hash_img(img, provenance=""):
     '''
     Calculate the hash of an image and the options that would be used to
     process it using sha512. This is used most frequently to cache images for

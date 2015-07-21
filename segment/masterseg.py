@@ -46,7 +46,8 @@ def process_command_line(argv):
 
     args = parser.parse_args(argv[1:])
     args.media_root = os.path.abspath(args.media_root)
-    args.image = [os.path.abspath(image) for image in args.images]
+    args.image = os.path.abspath(args.image)
+    args.log = os.path.abspath(args.log)
 
     DEBUG = args.debug
 
@@ -212,10 +213,10 @@ def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size):
 
             logging.info("Segmented %s with %s", seed, sname)
 
-
         # we need the names of the input files so that our options hash is
         # dependent on the input images.
-        consensus_input_files = [s['file'] for s in seed_info.values()]
+        seed_indep_hashes = [sitkstrats.hash_img(i)[0:8]
+                             for i in out_imgs.values()]
 
         try:
             (consensus, consensus_info) = mediadir_log(
@@ -224,7 +225,7 @@ def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size):
                  {'threshold': 2.0/3.0,
                   'max_size': lung_size * 0.5,
                   'min_size': lung_size * 1e-5,
-                  'input_files': consensus_input_files}),
+                  'indep_img_hashes': seed_indep_hashes}),
                 root_dir,
                 sha)
         except RuntimeWarning as war:
@@ -357,8 +358,7 @@ def log_name_gen(sha, log_dir):
     '''
     logfilename = "-".join([sha, str(datetime.datetime.now())])+".log"
     logfilename = logfilename.replace(" ", "-")
-    logfilename = os.path.join(os.path.abspath(log_dir),
-                               logfilename)
+    logfilename = os.path.join(log_dir, logfilename)
 
     return logfilename
 
