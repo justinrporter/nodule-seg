@@ -49,6 +49,7 @@ def process_command_line(argv):
     args.image = os.path.abspath(args.image)
     args.log = os.path.abspath(args.log)
 
+    global DEBUG #pylint: disable=W0603
     DEBUG = args.debug
 
     return args
