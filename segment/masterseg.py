@@ -51,7 +51,7 @@ def process_command_line(argv):
     args.log = os.path.abspath(args.log)
 
     if args.seed is not None:
-        args.seed = reversed(args.seed)
+        args.seed = [args.seed[i] for i in reversed(range(len(args.seed)))]
 
     global DEBUG #pylint: disable=W0603
     DEBUG = args.debug
