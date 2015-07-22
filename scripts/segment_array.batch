@@ -6,14 +6,13 @@ mkdir -p $RUNDIR
 cd $RUNDIR
 
 mkdir -p $RUNDIR/logs/
-mkdir -p $RUNDIR/media_root/
 
 EXECDIR="/home/jporter/nodule-seg/segment/"
 PYTHONPATH=$PYTHONPATH:$EXECDIR
 HOME_MEDIA="/home/jporter/nodule-seg/media_root/"
 INIT_IMG_DIR=$HOME_MEDIA"/init"
 
-NSEEDS=5
+NSEEDS=500
 MY_IMG=$( ls -1 $INIT_IMG_DIR | head -n $PBS_ARRAYID | tail -n 1 )
 
 python $EXECDIR/masterseg.py --nseeds $NSEEDS $INIT_IMG_DIR/$MY_IMG --media_root $RUNDIR/ --log $RUNDIR/logs/
