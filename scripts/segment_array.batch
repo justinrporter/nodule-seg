@@ -16,3 +16,5 @@ NSEEDS=500
 MY_IMG=$( ls -1 $INIT_IMG_DIR | head -n $PBS_ARRAYID | tail -n 1 )
 
 python $EXECDIR/masterseg.py --nseeds $NSEEDS $INIT_IMG_DIR/$MY_IMG --media_root $RUNDIR/ --log $RUNDIR/logs/
+
+echo "exit" $!
