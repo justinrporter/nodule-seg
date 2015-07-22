@@ -1,9 +1,7 @@
-#PBS -l nodes=1:ppn=1,walltime=04:00:00
-
-PBS_ARRAYID=1
+#PBS -l nodes=1:ppn=1,walltime=10:00:00
 
 # form a directory for each job id/array id combination on scratch
-RUNDIR="/scratch/jporter/tmp/"$PBS_JOBID-$PBS_ARRAYID
+RUNDIR="/scratch/jporter/batch-"$PBS_JOBID
 mkdir -p $RUNDIR
 cd $RUNDIR
 
@@ -15,6 +13,7 @@ PYTHONPATH=$PYTHONPATH:$EXECDIR
 HOME_MEDIA="/home/jporter/nodule-seg/media_root/"
 INIT_IMG_DIR=$HOME_MEDIA"/init"
 
-NSEEDS=500
-IMGS=$(( ls $INIT_IMG_DIR | grep ".nii" ))
-MY_IMG=$(( echo $IMGS | head -n $PBS_ARRAYID | tail -n 
+NSEEDS=5
+MY_IMG=$( ls -1 $INIT_IMG_DIR | head -n $PBS_ARRAYID | tail -n 1 )
+
+python $EXECDIR/masterseg.py --nseeds $NSEEDS $INIT_IMG_DIR/$MY_IMG --media_root $RUNDIR/ --log $RUNDIR/logs/
