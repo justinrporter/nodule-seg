@@ -38,7 +38,8 @@ def process_command_line(argv):
         help="The directory to place logs in.")
     parser.add_argument(
         '--seed', default=None, nargs=3, type=int, metavar=('X', 'Y', 'Z'),
-        help="Add an additional, manually determined seed to the calculation.")
+        help="Add an additional, manually determined seed to the " +
+        "calculation. Seed should be image-indexed (x, y, z not z, y, x).")
     parser.add_argument(
         '--debug', default=False, action="store_true",
         help="Set the script to run in debug mode, where it produces FAR " +
@@ -48,6 +49,9 @@ def process_command_line(argv):
     args.media_root = os.path.abspath(args.media_root)
     args.image = os.path.abspath(args.image)
     args.log = os.path.abspath(args.log)
+
+    if args.seed is not None:
+        args.seed = reversed(args.seed)
 
     global DEBUG #pylint: disable=W0603
     DEBUG = args.debug
@@ -302,7 +306,7 @@ def run_img(img_in, sha, nseeds, root_dir, addl_seed):  # pylint: disable=C0111
         seeds.insert(0, addl_seed)
 
     if len(seeds) > nseeds:
-        logging.warning("The number of seeds generated in the dependent " +
+        logging.warning("The number of seeds generated in the deterministic " +
                         "phase (%s) is greater than the allowed number of " +
                         "seeds (%s). The list of seeds is being truncated.",
                         len(seeds), nseeds)
