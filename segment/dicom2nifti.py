@@ -29,9 +29,16 @@ def process_command_line(argv):
 
 def dicom_files(indir):
     '''Returns a list of the names of all files in a dicom series given the
-    directory in which they're stored.'''
-    reader = sitk.ImageSeriesReader()
-    return reader.GetGDCMSeriesFileNames(indir)
+    directory in which they're stored. The list is sorted based upon the
+    SliceLocation DICOM parameter'''
+    import dicom
+
+    slices = [(f, dicom.read_file(os.path.join(indir, f)))
+              for f in os.listdir(indir)]
+
+    slices.sort(key=lambda x: x[1].SliceLocation)
+
+    return [os.path.join(indir, x[0]) for x in slices]
 
 
 def dicom_hash(dicom):
