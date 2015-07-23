@@ -50,9 +50,6 @@ def process_command_line(argv):
     args.image = os.path.abspath(args.image)
     args.log = os.path.abspath(args.log)
 
-    if args.seed is not None:
-        args.seed = [args.seed[i] for i in reversed(range(len(args.seed)))]
-
     global DEBUG #pylint: disable=W0603
     DEBUG = args.debug
 
@@ -188,9 +185,12 @@ def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size):
                     "Tried to segment %s but it was already segmented", seed)
                 continue
         except IndexError as err:
+            sys.stderr.write("Tried to access " + str(seed) + " as " +
+                             str(list(reversed(seed))) + " in img of size " +
+                             str(segmented.shape)+"\n")
             logging.error(" ".join([str(seed), str(segmented.shape)]))
             logging.error(str(err))
-            raise err
+            raise
 
         # We want to hold onto images and info dicts for each segmentation,
         # and we want to automagically store the info we put in seed_info into
@@ -303,6 +303,12 @@ def run_img(img_in, sha, nseeds, root_dir, addl_seed):  # pylint: disable=C0111
     seeds.extend(sitkstrats.distribute_seeds(lung_img, nseeds-len(seeds)))
 
     if addl_seed is not None:
+        # additional seed is given in terms of the input image, and must
+        # be corrected for cropping.
+        origin = img_info['crop']['origin']
+        assert len(addl_seed) == len(origin)
+        addl_seed = [addl_seed[i] - origin[i]
+                     for i in range(len(addl_seed))]
         seeds.insert(0, addl_seed)
 
     if len(seeds) > nseeds:
@@ -385,16 +391,16 @@ def main(argv=None):
 
     logging.info("Beginning image %s", args.image)
 
-    # try:
-    run_info = run_img(sitkstrats.read(args.image), sha,
-                       args.nseeds, args.media_root, args.seed)
-    # except Exception as exc:  # pylint: disable=W0703
-    #     logging.critical("Encountered critical exception:\n%s", exc)
-    #     raise exc
+    try:
+        run_info = run_img(sitkstrats.read(args.image), sha,
+                           args.nseeds, args.media_root, args.seed)
+    except Exception as exc:  # pylint: disable=W0703
+        logging.critical("Encountered critical exception:\n%s", exc)
+        raise
 
     write_info(run_info, filename=os.path.join(args.log, sha+"-seg.json"))
 
-    return 1
+    return 0
 
 
 if __name__ == "__main__":
