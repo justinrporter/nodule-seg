@@ -1,6 +1,5 @@
-#PBS -l nodes=1:ppn=1,walltime=10:00:00
+#PBS -l nodes=1:ppn=2,walltime=10:00:00
 
-# form a directory for each job id/array id combination on scratch
 RUNDIR="/scratch/jporter/batch-"$PBS_JOBID
 mkdir -p $RUNDIR
 cd $RUNDIR
@@ -12,7 +11,13 @@ PYTHONPATH=$PYTHONPATH:$EXECDIR
 HOME_MEDIA="/home/jporter/nodule-seg/media_root/"
 INIT_IMG_DIR=$HOME_MEDIA"/init"
 
-NSEEDS=500
+NSEEDS=1000
 MY_IMG=$( ls -1 $INIT_IMG_DIR | head -n $PBS_ARRAYID | tail -n 1 )
 
+echo $PBS_ARRAYID $MY_IMG
+
 python $EXECDIR/masterseg.py --nseeds $NSEEDS $INIT_IMG_DIR/$MY_IMG --media_root $RUNDIR/ --log $RUNDIR/logs/
+
+echo "Finished:" $( cat $RUNDIR/logs/*log | grep "Finished" | wc -l )
+echo "Alredy Segmented:" $( cat $RUNDIR/logs/*log | grep "Tried" | wc -l )
+echo "Seg Too Small:" $( cat $RUNDIR/logs/*log | grep "Failed" | wc -l )
