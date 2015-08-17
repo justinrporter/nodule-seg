@@ -21,3 +21,6 @@ python $EXECDIR/masterseg.py --nseeds $NSEEDS $INIT_IMG_DIR/$MY_IMG --media_root
 echo "Finished:" $( cat $RUNDIR/logs/*log | grep "Finished" | wc -l )
 echo "Alredy Segmented:" $( cat $RUNDIR/logs/*log | grep "Tried" | wc -l )
 echo "Seg Too Small:" $( cat $RUNDIR/logs/*log | grep "Failed" | wc -l )
+
+echo "exit" $!
+

@@ -39,7 +39,8 @@ def process_command_line(argv):
         help="The directory to place logs in.")
     parser.add_argument(
         '--seed', default=None, nargs=3, type=int, metavar=('X', 'Y', 'Z'),
-        help="Add an additional, manually determined seed to the calculation.")
+        help="Add an additional, manually determined seed to the " +
+        "calculation. Seed should be image-indexed (x, y, z not z, y, x).")
     parser.add_argument(
         '--debug', default=False, action="store_true",
         help="Set the script to run in debug mode, where it produces FAR " +
@@ -185,9 +186,12 @@ def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size, img_in):
                     "Tried to segment %s but it was already segmented", seed)
                 continue
         except IndexError as err:
+            sys.stderr.write("Tried to access " + str(seed) + " as " +
+                             str(list(reversed(seed))) + " in img of size " +
+                             str(segmented.shape)+"\n")
             logging.error(" ".join([str(seed), str(segmented.shape)]))
             logging.error(str(err))
-            raise err
+            raise
 
         # We want to hold onto images and info dicts for each segmentation,
         # and we want to automagically store the info we put in seed_info into
@@ -337,10 +341,16 @@ def run_img(img, sha, nseeds, root_dir, addl_seed):  # pylint: disable=C0111
     seeds.extend(sitkstrats.distribute_seeds(lung_img, nseeds-len(seeds)))
 
     if addl_seed is not None:
+        # additional seed is given in terms of the input image, and must
+        # be corrected for cropping.
+        origin = img_info['crop']['origin']
+        assert len(addl_seed) == len(origin)
+        addl_seed = [addl_seed[i] - origin[i]
+                     for i in range(len(addl_seed))]
         seeds.insert(0, addl_seed)
 
     if len(seeds) > nseeds:
-        logging.warning("The number of seeds generated in the dependent " +
+        logging.warning("The number of seeds generated in the deterministic " +
                         "phase (%s) is greater than the allowed number of " +
                         "seeds (%s). The list of seeds is being truncated.",
                         len(seeds), nseeds)
@@ -420,16 +430,16 @@ def main(argv=None):
 
     logging.info("Beginning image %s", args.image)
 
-    # try:
-    run_info = run_img(sitkstrats.read(args.image), sha,
-                       args.nseeds, args.media_root, args.seed)
-    # except Exception as exc:  # pylint: disable=W0703
-    #     logging.critical("Encountered critical exception:\n%s", exc)
-    #     raise exc
+    try:
+        run_info = run_img(sitkstrats.read(args.image), sha,
+                           args.nseeds, args.media_root, args.seed)
+    except Exception as exc:  # pylint: disable=W0703
+        logging.critical("Encountered critical exception:\n%s", exc)
+        raise
 
     write_info(run_info, filename=os.path.join(args.log, sha+"-seg.json"))
 
-    return 1
+    return 0
 
 
 if __name__ == "__main__":
