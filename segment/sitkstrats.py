@@ -68,14 +68,11 @@ def options_log(func):
     '''A decorator that will modify the incoming options object to also include
     information about runtime and algorithm choice.'''
     @wraps(func)
-    def exec_func(img, opts=None):
+    def exec_func(*args, **kwargs):
         '''The inner function for options_log'''
-        if opts is None:
-            opts = {}
-
         start = datetime.datetime.now()
 
-        (img, out_opts) = func(img, opts)
+        (img, out_opts) = func(*args, **kwargs)
 
         out_opts['algorithm'] = func.__name__
         out_opts['time'] = datetime.datetime.now() - start
@@ -206,35 +203,48 @@ def com_calc(img, max_size, min_size, lung_img):
     return (seeds, info)
 
 @options_log
-def crop_to_segmentation(img, lung_img, padding_ratio=0.00):
+def crop_to_segmentation(img, seg_img, padding_ratio=None, padding_px=None):
     '''
     Given an image and a segmentation of that image, crop the image to include
-    only the portions of the image present in that segmentation.
+    only the portions of the image present in that segmentation. Only one of
+    padding_px and padding_ratio can be specified.
     '''
     from bounding import bounding_cube
 
-    assert img.GetSize() == lung_img.GetSize()
-    assert img.GetSpacing() == lung_img.GetSpacing()
+    # it's not allowed to specify both padding_ratio and padding_px
+    assert not ((padding_px is not None) and (padding_ratio is not None))
+
+    assert img.GetSize() == seg_img.GetSize()
+    assert img.GetSpacing() == seg_img.GetSpacing()
 
     # calculate the bounding cube of the lung segmentation in numpy coordinates
-    lims = bounding_cube(sitk.GetArrayFromImage(lung_img))
+    lims = bounding_cube(sitk.GetArrayFromImage(seg_img))
 
     # calculate the amount of each image to be removed (in itk indexing)
     lower_remove = [l[0] for l in reversed(lims)]
     upper_remove = [img.GetSize()[i] - l[1] for (i, l)
                     in enumerate(reversed(lims))]
 
-    padding = [int(padding_ratio*img.GetSize()[i])
-               for i in range(len(img.GetSize()))]
+    if padding_px is None:
+        padding_ratio = 0.0
+        padding = [int(padding_ratio*img.GetSize()[i])
+                   for i in range(len(img.GetSize()))]
+    elif padding_ratio is None:
+        assert padding_px is not None
+        padding = [padding_px]*len(img.GetSize())
 
     padded_removes = [[r[i] - padding[i] for i in range(len(padding))]
                       for r in [lower_remove, upper_remove]]
 
     logging.info("Cropped img to %s", lims)
 
+    if np.any(np.array(padded_removes) < 0):
+        raise ValueError("Padded removes " + str(padded_removes) +
+                         " are invalid.")
+
     return (sitk.Crop(img, *padded_removes),
             {"origin": (lims[0][0], lims[1][0], lims[2][0]),
-             "padding": padding_ratio})
+             "padding": padding})
 
 
 def distribute_seeds(img, n_pts=100):
