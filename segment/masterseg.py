@@ -9,6 +9,7 @@ import SimpleITK as sitk
 import numpy as np
 
 import sitkstrats
+import bounding
 
 # a flag to run the script in debug mode. ONLY SET in process_command_line.
 global DEBUG  # pylint: disable=W0604
@@ -23,7 +24,7 @@ def process_command_line(argv):
 
     parser.add_argument(
         "image",
-        help="The dicom directories to operate on.")
+        help="The image to process on.")
     parser.add_argument(
         "--nseeds", type=int, default=10,
         help="The number of randomly placed seeds to produce.")
@@ -168,7 +169,7 @@ def configure_strats():
     return strats
 
 
-def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size):
+def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size, img_in):
 
     # pick an image, basically at random, from imgs to initialize an array
     # that tracks which areas of the image have already been segmented out
@@ -220,6 +221,7 @@ def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size):
                              for i in out_imgs.values()]
 
         try:
+            # First, we compute the segmentation union
             (consensus, consensus_info) = mediadir_log(
                 sitkstrats.segmentation_union,
                 (out_imgs.values(),
@@ -229,8 +231,44 @@ def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size):
                   'indep_img_hashes': seed_indep_hashes}),
                 root_dir,
                 sha)
+
+            # Then we crop down both the initial image ("img_in") AND the
+            # segmentation based upon the size of the segmentation.
+            (crop_seg, crop_seg_info) = sitkstrats.crop_to_segmentation(
+                img=consensus, seg_img=consensus, padding_px=5)
+            (crop_img, crop_img_info) = sitkstrats.crop_to_segmentation(
+                img=img_in, seg_img=consensus, padding_px=5)
+
+            # Because we used the image "consensus" for both croppings,
+            # the images should be cropped the same way
+            assert crop_seg.GetSize() == crop_img.GetSize()
+            assert crop_seg_info['origin'] == crop_img_info['origin']
+            assert crop_seg_info['padding'] == crop_img_info['padding']
+
+            logging.info("Cropped %s to %s.", seed, crop_img.GetSize())
+
+            consensus_info.update(crop_seg_info)
+
+            mediadir_log(
+                lambda x, y: (x, y),
+                (crop_seg, crop_seg_info),
+                root_dir,
+                sha,
+                subdir="consensus-label")
+            mediadir_log(
+                lambda x, y: (x, y),
+                (crop_img, crop_img_info),
+                root_dir,
+                sha,
+                subdir="consensus-grey")
+
         except RuntimeWarning as war:
             logging.info("Failed %s during consensus: %s", seed, war)
+            seed_info['consensus'] = "failure"
+            continue
+        except ValueError as err:
+            # this ocurrs when the segmentation runs to the edge of the image.
+            logging.info("Failed %s during cropping: %s", seed, err)
             seed_info['consensus'] = "failure"
             continue
 
@@ -243,20 +281,20 @@ def seeddep(imgs, seeds, root_dir, sha, segstrats, lung_size):
     return out_info
 
 
-def run_img(img_in, sha, nseeds, root_dir, addl_seed):  # pylint: disable=C0111
+def run_img(img, sha, nseeds, root_dir, addl_seed):  # pylint: disable=C0111
     '''Run the entire protocol on a particular image starting with sha hash'''
     img_info = {}
 
     lung_img, lung_info = debug_log(sitkstrats.segment_lung,
-                                    (img_in, {'probe_size': 7}),
+                                    (img, {'probe_size': 7}),
                                     root_dir, sha)
     img_info['lungseg'] = lung_info
 
-    (img, tmp_info) = debug_log(sitkstrats.crop_to_segmentation,
-                                (img_in, lung_img),
-                                root_dir, sha, subdir="crop")
-    lung_img = sitkstrats.crop_to_segmentation(lung_img, lung_img)[0]
-    img_info['crop'] = tmp_info
+    # (img, tmp_info) = debug_log(sitkstrats.crop_to_segmentation,
+    #                             (img_in, lung_img),
+    #                             root_dir, sha, subdir="crop")
+    # lung_img = sitkstrats.crop_to_segmentation(lung_img, lung_img)[0]
+    # img_info['crop'] = tmp_info
 
     segstrats = configure_strats()
     seed_indep_imgs = {}
@@ -311,7 +349,8 @@ def run_img(img_in, sha, nseeds, root_dir, addl_seed):  # pylint: disable=C0111
     seeds = seeds[0:nseeds]
 
     seg_info = seeddep(seed_indep_imgs, seeds,
-                       root_dir, sha, segstrats, img_info['lungseg']['size'])
+                       root_dir, sha, segstrats, img_info['lungseg']['size'],
+                       img)
 
     img_info['noduleseg'] = {}
     for seed in seg_info:
